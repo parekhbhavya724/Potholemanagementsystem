@@ -1041,28 +1041,28 @@
             <div id="overview-tab" class="admin-tab active">
                 <div class="dashboard-grid">
                     <div class="stat-card high">
-                        <div class="stat-number" id="countHigh">3</div>
+                        <div class="stat-number" id="countHigh">0</div>
                         <div class="stat-label">High Severity</div>
                     </div>
                     <div class="stat-card medium">
-                        <div class="stat-number" id="countMedium">7</div>
+                        <div class="stat-number" id="countMedium">0</div>
                         <div class="stat-label">Medium Severity</div>
                     </div>
                     <div class="stat-card low">
-                        <div class="stat-number" id="countLow">12</div>
+                        <div class="stat-number" id="countLow">0</div>
                         <div class="stat-label">Low Severity</div>
                     </div>
                     <div class="stat-card" style="border-left: 4px solid #639922;">
-                        <div class="stat-number" style="color: #639922;">8</div>
-                        <div class="stat-label">Resolved This Week</div>
+                        <div class="stat-number" id="countResolved" style="color: #639922;">0</div>
+                        <div class="stat-label">Resolved Potholes</div>
                     </div>
                 </div>
 
                 <h3 style="margin-bottom: 1rem;">Completion Rate</h3>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: 62%"></div>
+                    <div class="progress-fill" id="completionProgressBar" style="width: 0%"></div>
                 </div>
-                <p style="font-size: 0.9rem; color: var(--text-secondary, #666); margin-top: 0.5rem;">62% of reported potholes resolved</p>
+                <p id="completionProgressText" style="font-size: 0.9rem; color: var(--text-secondary, #666); margin-top: 0.5rem;">0% of reported potholes resolved (0/0)</p>
             </div>
 
             <div id="manage-tab" class="admin-tab" style="display: none;">
@@ -1097,38 +1097,31 @@
         let currentUser = null;
         let currentReport = null;
         let selectedSeverity = null;
-        let allReports = [
-            {
-                id: 'PH001',
-                lat: 19.0760,
-                lon: 72.8777,
-                address: 'Marine Drive, Mumbai',
-                severity: 'high',
-                description: 'Large pothole causing traffic hazards',
-                width: 45,
-                depth: 12,
-                email: 'citizen1@email.com',
-                status: 'in_progress',
-                submittedDate: '2024-08-25',
-                assignedTo: 'Team A',
-                progressPercent: 75
-            },
-            {
-                id: 'PH002',
-                lat: 19.0850,
-                lon: 72.8600,
-                address: 'Bandra Worli Sea Link',
-                severity: 'medium',
-                description: 'Medium sized pothole on left lane',
-                width: 30,
-                depth: 8,
-                email: 'citizen2@email.com',
-                status: 'assigned',
-                submittedDate: '2024-08-26',
-                assignedTo: 'Team B',
-                progressPercent: 30
-            }
-        ];
+        // Pothole Reports data (Empty by default - no data till now)
+        let allReports = JSON.parse(localStorage.getItem('potholeReports')) || [];
+
+        function updateDashboardStats() {
+            const high = allReports.filter(r => r.severity === 'high' && r.status !== 'resolved').length;
+            const medium = allReports.filter(r => r.severity === 'medium' && r.status !== 'resolved').length;
+            const low = allReports.filter(r => r.severity === 'low' && r.status !== 'resolved').length;
+            const resolved = allReports.filter(r => r.status === 'resolved').length;
+            const total = allReports.length;
+            const rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+
+            const elHigh = document.getElementById('countHigh');
+            const elMedium = document.getElementById('countMedium');
+            const elLow = document.getElementById('countLow');
+            const elResolved = document.getElementById('countResolved');
+            const elBar = document.getElementById('completionProgressBar');
+            const elText = document.getElementById('completionProgressText');
+
+            if (elHigh) elHigh.textContent = high;
+            if (elMedium) elMedium.textContent = medium;
+            if (elLow) elLow.textContent = low;
+            if (elResolved) elResolved.textContent = resolved;
+            if (elBar) elBar.style.width = rate + '%';
+            if (elText) elText.textContent = `${rate}% of reported potholes resolved (${resolved}/${total})`;
+        }
 
         // Authorized Admin Emails (Only these accounts can view or access Admin Dashboard)
         const ADMIN_EMAILS = [
@@ -1331,6 +1324,9 @@
                 adminHeroBtn.style.display = userIsAdmin ? 'inline-block' : 'none';
             }
 
+            // Refresh dashboard statistics
+            updateDashboardStats();
+
             // Show home page
             switchPage('home');
         }
@@ -1406,6 +1402,9 @@
             };
 
             allReports.push(newReport);
+            localStorage.setItem('potholeReports', JSON.stringify(allReports));
+            updateDashboardStats();
+
             document.getElementById('trackingId').textContent = newReport.id;
             document.getElementById('successMsg').classList.add('show');
 
@@ -1423,14 +1422,26 @@
         function loadCitizenReports() {
             switchPage('citizen-reports');
             const list = document.getElementById('citizenReportsList');
-            list.innerHTML = allReports.filter(r => r.email === currentUser.email).map(report => `
+            const myReports = allReports.filter(r => r.email === currentUser.email);
+            if (myReports.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align: center; padding: 3rem 1rem; color: #888; background: white; border-radius: 8px; border: 1px dashed #ddd;">
+                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📭</div>
+                        <h3 style="color: #444;">No reports submitted yet</h3>
+                        <p style="margin-top: 0.5rem; font-size: 0.95rem;">You haven't reported any potholes yet.</p>
+                        <button class="btn btn-primary" style="margin-top: 1.2rem;" onclick="switchPage('citizen')">Report a Pothole</button>
+                    </div>
+                `;
+                return;
+            }
+            list.innerHTML = myReports.map(report => `
                 <div class="report-card">
                     <div class="report-info">
                         <h3>Report #${report.id}</h3>
                         <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">${report.address}</p>
                         <div class="report-meta">
                             <div class="meta-item">
-                                <strong>Severity:</strong> ${report.severity}
+                                <strong>Severity:</strong> ${report.severity.toUpperCase()}
                             </div>
                             <div class="meta-item">
                                 <strong>Submitted:</strong> ${report.submittedDate}
@@ -1443,16 +1454,77 @@
         }
 
         function loadAdminReports() {
+            updateDashboardStats();
             const list = document.getElementById('adminReportsList');
-            list.innerHTML = allReports.map(report => `
-                <div class="report-card">
-                    <div class="report-info">
-                        <h3>Report #${report.id}</h3>
-                        <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">${report.address}</p>
+            if (allReports.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align: center; padding: 3rem 1rem; color: #888; background: white; border-radius: 8px; border: 1px dashed #ddd;">
+                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📋</div>
+                        <h3 style="color: #444;">No data till now</h3>
+                        <p style="margin-top: 0.5rem; font-size: 0.95rem;">No citizen pothole reports have been received yet.</p>
                     </div>
-                    <span class="status-badge status-${report.status}">${report.status.toUpperCase()}</span>
-                </div>
-            `).join('');
+                `;
+            } else {
+                list.innerHTML = allReports.map(report => `
+                    <div class="report-card">
+                        <div class="report-info">
+                            <h3>Report #${report.id}</h3>
+                            <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">${report.address}</p>
+                            <div class="report-meta">
+                                <div class="meta-item">
+                                    <strong>Severity:</strong> ${report.severity.toUpperCase()}
+                                </div>
+                                <div class="meta-item">
+                                    <strong>Submitted:</strong> ${report.submittedDate}
+                                </div>
+                                <div class="meta-item">
+                                    <strong>Reported by:</strong> ${report.email}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                            <span class="status-badge status-${report.status}">${report.status.toUpperCase()}</span>
+                            <select onchange="updateReportStatus('${report.id}', this.value)" style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem; background: white; cursor: pointer;">
+                                <option value="reported" ${report.status === 'reported' ? 'selected' : ''}>Reported</option>
+                                <option value="assigned" ${report.status === 'assigned' ? 'selected' : ''}>Assigned</option>
+                                <option value="in_progress" ${report.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                                <option value="resolved" ${report.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+                            </select>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const progressList = document.getElementById('progressReportsList');
+            const inProgress = allReports.filter(r => r.status === 'in_progress' || r.status === 'assigned');
+            if (inProgress.length === 0) {
+                progressList.innerHTML = `
+                    <div style="text-align: center; padding: 2.5rem 1rem; color: #888; background: white; border-radius: 8px; border: 1px dashed #ddd;">
+                        <p style="font-size: 0.95rem;">No active repair projects currently underway.</p>
+                    </div>
+                `;
+            } else {
+                progressList.innerHTML = inProgress.map(r => `
+                    <div class="report-card">
+                        <div class="report-info">
+                            <h3>Project #${r.id} - ${r.address}</h3>
+                            <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">Status: <strong>${r.status.toUpperCase()}</strong> | Assigned: <strong>${r.assignedTo || 'Maintenance Team'}</strong></p>
+                            <div class="progress-bar" style="margin-top: 0.5rem;">
+                                <div class="progress-fill" style="width: ${r.status === 'in_progress' ? '60%' : '20%'}"></div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function updateReportStatus(reportId, newStatus) {
+            const report = allReports.find(r => r.id === reportId);
+            if (report) {
+                report.status = newStatus;
+                localStorage.setItem('potholeReports', JSON.stringify(allReports));
+                loadAdminReports();
+            }
         }
 
         function switchAdminTab(tabName) {
