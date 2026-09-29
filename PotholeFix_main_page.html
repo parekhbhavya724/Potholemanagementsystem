@@ -969,19 +969,10 @@
 
                 <div class="form-group">
                     <label>Upload Photo</label>
-                    <div id="imageUploadArea" style="border: 2px dashed #ccc; border-radius: 8px; padding: 2rem 1rem; text-align: center; cursor: pointer; background: #fafafa; transition: border-color 0.2s;" onclick="document.getElementById('potholeImageInput').click()">
-                        <input type="file" id="potholeImageInput" accept="image/*" style="display: none;" onchange="handleImagePreview(event)">
-                        <div id="uploadPrompt">
-                            <i class="fas fa-camera" style="font-size: 2rem; color: #888; margin-bottom: 0.75rem;"></i>
-                            <p style="font-weight: 500; color: #333; margin-bottom: 0.25rem;">Click to upload or take a photo</p>
-                            <p style="font-size: 0.85rem; color: #777;">Supports JPG, PNG, WEBP</p>
-                        </div>
-                        <div id="imagePreviewContainer" style="display: none;">
-                            <img id="imagePreview" src="" alt="Pothole Preview" style="max-height: 200px; max-width: 100%; border-radius: 6px; object-fit: cover;">
-                            <div style="margin-top: 0.75rem;">
-                                <button type="button" class="btn" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;" onclick="event.stopPropagation(); removeImage();">Remove Image</button>
-                            </div>
-                        </div>
+                    <div style="border: 2px dashed #ccc; border-radius: 8px; padding: 2.5rem 1rem; text-align: center; background: #fafafa;">
+                        <i class="fas fa-camera" style="font-size: 2rem; color: #888; margin-bottom: 0.75rem;"></i>
+                        <p style="font-weight: 500; color: #333; margin-bottom: 0.25rem;">Upload or capture pothole photo</p>
+                        <p style="font-size: 0.85rem; color: #777;">Supports JPG, PNG, WEBP</p>
                     </div>
                 </div>
             </div>
@@ -1385,38 +1376,6 @@
             selectedSeverity = level;
         }
 
-        let uploadedImageData = null;
-
-        function handleImagePreview(event) {
-            const file = event.target.files[0];
-            if (file) {
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('Image size exceeds 5MB. Please choose a smaller image.');
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    uploadedImageData = e.target.result;
-                    document.getElementById('imagePreview').src = e.target.result;
-                    document.getElementById('uploadPrompt').style.display = 'none';
-                    document.getElementById('imagePreviewContainer').style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function removeImage() {
-            uploadedImageData = null;
-            const input = document.getElementById('potholeImageInput');
-            if (input) input.value = '';
-            const preview = document.getElementById('imagePreview');
-            if (preview) preview.src = '';
-            const prompt = document.getElementById('uploadPrompt');
-            if (prompt) prompt.style.display = 'block';
-            const container = document.getElementById('imagePreviewContainer');
-            if (container) container.style.display = 'none';
-        }
-
         function submitReport() {
             const lat = document.getElementById('latitude').value;
             const lon = document.getElementById('longitude').value;
@@ -1436,7 +1395,6 @@
                 severity: selectedSeverity,
                 description: desc,
                 email: currentUser.email,
-                image: uploadedImageData || null,
                 status: 'reported',
                 submittedDate: new Date().toISOString().split('T')[0],
                 assignedTo: 'Pending',
@@ -1458,7 +1416,6 @@
                 document.getElementById('description').value = '';
                 selectedSeverity = null;
                 document.querySelectorAll('.severity-btn').forEach(b => b.classList.remove('active'));
-                removeImage();
             }, 3000);
         }
 
