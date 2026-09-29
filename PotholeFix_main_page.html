@@ -835,13 +835,7 @@
                         <input type="tel" id="signupPhone" placeholder="+91 98765 43210" required>
                     </div>
 
-                    <div class="form-group">
-                        <label>Account Type</label>
-                        <select id="accountType">
-                            <option value="citizen">Citizen</option>
-                            <option value="authority">Authority/Admin</option>
-                        </select>
-                    </div>
+                    <!-- Account type is automatically assigned based on authorized emails -->
 
                     <div class="form-group has-password-check">
                         <label>Password</label>
@@ -880,7 +874,8 @@
         <div class="nav-buttons">
             <button class="btn" onclick="switchPage('home')">Home</button>
             <button class="btn" onclick="switchPage('citizen')">Report Pothole</button>
-            <button class="btn btn-primary" onclick="switchPage('admin')">Admin Dashboard</button>
+            <button class="btn" onclick="switchPage('citizen-reports')">My Reports</button>
+            <button class="btn btn-primary" id="adminNavBtn" style="display: none;" onclick="switchPage('admin')">Admin Dashboard</button>
             
             <div class="user-info">
                 <div class="user-avatar" id="userAvatar">U</div>
@@ -906,7 +901,7 @@
                     <button class="btn btn-lg" style="background: white; color: #d85a30; border: 2px solid white;" onclick="switchPage('citizen')">
                         <i class="fas fa-plus-circle"></i> Report a Pothole
                     </button>
-                    <button class="btn btn-lg" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white;" onclick="switchPage('admin')">
+                    <button class="btn btn-lg" id="adminHeroBtn" style="display: none; background: rgba(255,255,255,0.2); color: white; border: 2px solid white;" onclick="switchPage('admin')">
                         <i class="fas fa-chart-bar"></i> View Dashboard
                     </button>
                 </div>
@@ -1135,11 +1130,26 @@
             }
         ];
 
+        // Authorized Admin Emails (Only these accounts can view or access Admin Dashboard)
+        const ADMIN_EMAILS = [
+            'parekhbhavya049@gmail.com',
+            'aniruddh.nambiar@gmail.com'
+        ];
+
+        function isUserAdmin(userOrEmail) {
+            if (!userOrEmail) return false;
+            const email = (typeof userOrEmail === 'string' ? userOrEmail : (userOrEmail.email || '')).trim().toLowerCase();
+            return ADMIN_EMAILS.includes(email);
+        }
+
         // Check if user is already logged in
         function checkAuthStatus() {
             const user = localStorage.getItem('currentUser');
             if (user) {
                 currentUser = JSON.parse(user);
+                // Synchronize role strictly with the admin list
+                currentUser.role = isUserAdmin(currentUser) ? 'authority' : 'citizen';
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 showAppAfterLogin();
             }
         }
@@ -1187,7 +1197,7 @@
         }
 
         function handleLogin() {
-            const email = document.getElementById('loginEmail').value;
+            const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             const errorDiv = document.getElementById('loginError');
 
@@ -1207,11 +1217,13 @@
                 return;
             }
 
+            const adminStatus = isUserAdmin(email);
+
             // Mock login - create user object
             const user = {
                 email: email,
                 name: email.split('@')[0],
-                role: 'citizen',
+                role: adminStatus ? 'authority' : 'citizen',
                 id: Math.random().toString(36).substr(2, 9)
             };
 
@@ -1223,10 +1235,9 @@
         }
 
         function handleSignup() {
-            const name = document.getElementById('signupName').value;
-            const email = document.getElementById('signupEmail').value;
-            const phone = document.getElementById('signupPhone').value;
-            const accountType = document.getElementById('accountType').value;
+            const name = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const phone = document.getElementById('signupPhone').value.trim();
             const password = document.getElementById('signupPassword').value;
             const confirmPassword = document.getElementById('signupPasswordConfirm').value;
             const agreeTerms = document.getElementById('agreeTerms').checked;
@@ -1264,12 +1275,14 @@
                 return;
             }
 
+            const adminStatus = isUserAdmin(email);
+
             // Mock signup - create user object
             const user = {
                 name: name,
                 email: email,
                 phone: phone,
-                role: accountType,
+                role: adminStatus ? 'authority' : 'citizen',
                 id: Math.random().toString(36).substr(2, 9),
                 createdDate: new Date().toISOString()
             };
@@ -1286,11 +1299,23 @@
             document.getElementById('mainContent').style.display = 'block';
             document.getElementById('navbar').style.display = 'flex';
 
+            const userIsAdmin = isUserAdmin(currentUser);
+
             // Update navbar with user info
             const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase();
             document.getElementById('userAvatar').textContent = initials || 'U';
             document.getElementById('userName').textContent = currentUser.name || currentUser.email;
-            document.getElementById('userRole').textContent = currentUser.role === 'citizen' ? 'Citizen Reporter' : 'Authority Admin';
+            document.getElementById('userRole').textContent = userIsAdmin ? 'Authority Admin' : 'Citizen Reporter';
+
+            // Show or hide admin buttons dynamically
+            const adminNavBtn = document.getElementById('adminNavBtn');
+            if (adminNavBtn) {
+                adminNavBtn.style.display = userIsAdmin ? 'inline-block' : 'none';
+            }
+            const adminHeroBtn = document.getElementById('adminHeroBtn');
+            if (adminHeroBtn) {
+                adminHeroBtn.style.display = userIsAdmin ? 'inline-block' : 'none';
+            }
 
             // Show home page
             switchPage('home');
@@ -1315,6 +1340,14 @@
         }
 
         function switchPage(pageId) {
+            // Guard admin dashboard
+            if (pageId === 'admin') {
+                if (!isUserAdmin(currentUser)) {
+                    alert('⛔ Access Restricted: Authority Admin access is restricted to authorized personnel.');
+                    return;
+                }
+            }
+
             document.querySelectorAll('#mainContent > .page').forEach(p => p.classList.remove('active'));
             const page = document.getElementById(pageId);
             if (page) {
