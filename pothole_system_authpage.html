@@ -1293,7 +1293,7 @@
             
             const roleEl = document.getElementById('userRole');
             if (roleEl) {
-                roleEl.textContent = userIsAdmin ? 'Authority Admin 🛡️' : 'Citizen Reporter';
+                roleEl.textContent = userIsAdmin ? 'Authority Admin' : 'Citizen Reporter';
                 roleEl.style.color = userIsAdmin ? '#d85a30' : 'var(--text-secondary, #666)';
                 roleEl.style.fontWeight = userIsAdmin ? '600' : 'normal';
             }
@@ -1409,11 +1409,9 @@
             const myReports = allReports.filter(r => r.email === currentUser.email);
             if (myReports.length === 0) {
                 list.innerHTML = `
-                    <div style="text-align: center; padding: 3rem 1rem; color: #888; background: white; border-radius: 8px; border: 1px dashed #ddd;">
-                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📭</div>
-                        <h3 style="color: #444;">No reports submitted yet</h3>
-                        <p style="margin-top: 0.5rem; font-size: 0.95rem;">You haven't reported any potholes yet.</p>
-                        <button class="btn btn-primary" style="margin-top: 1.2rem;" onclick="switchPage('citizen')">Report a Pothole</button>
+                    <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary, #666);">
+                        <p style="font-size: 0.95rem; margin-bottom: 1rem;">You haven't reported any potholes yet.</p>
+                        <button class="btn btn-primary" onclick="switchPage('citizen')">Report a Pothole</button>
                     </div>
                 `;
                 return;
@@ -1442,10 +1440,8 @@
             const list = document.getElementById('adminReportsList');
             if (allReports.length === 0) {
                 list.innerHTML = `
-                    <div style="text-align: center; padding: 3rem 1rem; color: #888; background: white; border-radius: 8px; border: 1px dashed #ddd;">
-                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📋</div>
-                        <h3 style="color: #444;">No data till now</h3>
-                        <p style="margin-top: 0.5rem; font-size: 0.95rem;">No citizen pothole reports have been received yet.</p>
+                    <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary, #666);">
+                        <p style="font-size: 0.95rem; margin: 0;">No citizen pothole reports have been received yet.</p>
                     </div>
                 `;
             } else {
