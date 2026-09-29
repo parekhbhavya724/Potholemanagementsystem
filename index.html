@@ -1039,21 +1039,18 @@
             </div>
 
             <div id="overview-tab" class="admin-tab active">
-                <div style="background: white; border: 1px solid var(--border, #e0e0e0); border-radius: 12px; padding: 2.5rem; margin-top: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                        <div>
-                            <h3 style="font-size: 1.4rem; color: var(--text-primary, #333); margin-bottom: 0.3rem;">Repair Completion Percentage</h3>
-                            <p style="color: var(--text-secondary, #666); font-size: 0.95rem;">Overall road hazard resolution progress</p>
-                        </div>
-                        <div id="completionPercentageBadge" style="font-size: 2.2rem; font-weight: 700; color: #639922;">0%</div>
+                <div style="background: white; border: 1px solid var(--border, #e0e0e0); border-radius: 8px; padding: 1.5rem; margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
+                        <h3 style="font-size: 1.1rem; color: #000; font-weight: 600; margin: 0;">Completion Rate</h3>
+                        <span id="completionPercentageBadge" style="font-size: 1.6rem; font-weight: 700; color: #000;">0%</span>
                     </div>
 
-                    <div class="progress-bar" style="height: 16px; border-radius: 8px; background: #eee; overflow: hidden;">
-                        <div class="progress-fill" id="completionProgressBar" style="width: 0%; height: 100%; background: #639922; transition: width 0.4s ease;"></div>
+                    <div class="progress-bar" style="height: 10px; border-radius: 4px; background: #e8e8e8; overflow: hidden; margin-bottom: 0.5rem;">
+                        <div class="progress-fill" id="completionProgressBar" style="width: 0%; height: 100%; background: #000; transition: width 0.3s ease;"></div>
                     </div>
 
-                    <p id="completionProgressText" style="font-size: 0.95rem; color: var(--text-secondary, #666); margin-top: 1rem;">
-                        0% of reported potholes resolved (0 of 0 total reports)
+                    <p id="completionProgressText" style="font-size: 0.85rem; color: #555; margin: 0;">
+                        0% resolved (0 of 0 reports)
                     </p>
                 </div>
             </div>
@@ -1102,9 +1099,15 @@
             const elBar = document.getElementById('completionProgressBar');
             const elText = document.getElementById('completionProgressText');
 
-            if (elBadge) elBadge.textContent = `${rate}%`;
-            if (elBar) elBar.style.width = `${rate}%`;
-            if (elText) elText.textContent = `${rate}% of reported potholes resolved (${resolved} of ${total} total reports)`;
+            if (elBadge) {
+                elBadge.textContent = `${rate}%`;
+                elBadge.style.color = '#000';
+            }
+            if (elBar) {
+                elBar.style.width = `${rate}%`;
+                elBar.style.background = '#000';
+            }
+            if (elText) elText.textContent = `${rate}% resolved (${resolved} of ${total} reports)`;
         }
 
         // Authorized Admin Emails (Only these accounts can view or access Admin Dashboard)
