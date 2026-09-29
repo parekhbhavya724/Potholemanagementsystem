@@ -1039,30 +1039,23 @@
             </div>
 
             <div id="overview-tab" class="admin-tab active">
-                <div class="dashboard-grid">
-                    <div class="stat-card high">
-                        <div class="stat-number" id="countHigh">0</div>
-                        <div class="stat-label">High Severity</div>
+                <div style="background: white; border: 1px solid var(--border, #e0e0e0); border-radius: 12px; padding: 2.5rem; margin-top: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h3 style="font-size: 1.4rem; color: var(--text-primary, #333); margin-bottom: 0.3rem;">Repair Completion Percentage</h3>
+                            <p style="color: var(--text-secondary, #666); font-size: 0.95rem;">Overall road hazard resolution progress</p>
+                        </div>
+                        <div id="completionPercentageBadge" style="font-size: 2.2rem; font-weight: 700; color: #639922;">0%</div>
                     </div>
-                    <div class="stat-card medium">
-                        <div class="stat-number" id="countMedium">0</div>
-                        <div class="stat-label">Medium Severity</div>
-                    </div>
-                    <div class="stat-card low">
-                        <div class="stat-number" id="countLow">0</div>
-                        <div class="stat-label">Low Severity</div>
-                    </div>
-                    <div class="stat-card" style="border-left: 4px solid #639922;">
-                        <div class="stat-number" id="countResolved" style="color: #639922;">0</div>
-                        <div class="stat-label">Resolved Potholes</div>
-                    </div>
-                </div>
 
-                <h3 style="margin-bottom: 1rem;">Completion Rate</h3>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="completionProgressBar" style="width: 0%"></div>
+                    <div class="progress-bar" style="height: 16px; border-radius: 8px; background: #eee; overflow: hidden;">
+                        <div class="progress-fill" id="completionProgressBar" style="width: 0%; height: 100%; background: #639922; transition: width 0.4s ease;"></div>
+                    </div>
+
+                    <p id="completionProgressText" style="font-size: 0.95rem; color: var(--text-secondary, #666); margin-top: 1rem;">
+                        0% of reported potholes resolved (0 of 0 total reports)
+                    </p>
                 </div>
-                <p id="completionProgressText" style="font-size: 0.9rem; color: var(--text-secondary, #666); margin-top: 0.5rem;">0% of reported potholes resolved (0/0)</p>
             </div>
 
             <div id="manage-tab" class="admin-tab" style="display: none;">
@@ -1101,26 +1094,17 @@
         let allReports = JSON.parse(localStorage.getItem('potholeReports')) || [];
 
         function updateDashboardStats() {
-            const high = allReports.filter(r => r.severity === 'high' && r.status !== 'resolved').length;
-            const medium = allReports.filter(r => r.severity === 'medium' && r.status !== 'resolved').length;
-            const low = allReports.filter(r => r.severity === 'low' && r.status !== 'resolved').length;
             const resolved = allReports.filter(r => r.status === 'resolved').length;
             const total = allReports.length;
             const rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
 
-            const elHigh = document.getElementById('countHigh');
-            const elMedium = document.getElementById('countMedium');
-            const elLow = document.getElementById('countLow');
-            const elResolved = document.getElementById('countResolved');
+            const elBadge = document.getElementById('completionPercentageBadge');
             const elBar = document.getElementById('completionProgressBar');
             const elText = document.getElementById('completionProgressText');
 
-            if (elHigh) elHigh.textContent = high;
-            if (elMedium) elMedium.textContent = medium;
-            if (elLow) elLow.textContent = low;
-            if (elResolved) elResolved.textContent = resolved;
-            if (elBar) elBar.style.width = rate + '%';
-            if (elText) elText.textContent = `${rate}% of reported potholes resolved (${resolved}/${total})`;
+            if (elBadge) elBadge.textContent = `${rate}%`;
+            if (elBar) elBar.style.width = `${rate}%`;
+            if (elText) elText.textContent = `${rate}% of reported potholes resolved (${resolved} of ${total} total reports)`;
         }
 
         // Authorized Admin Emails (Only these accounts can view or access Admin Dashboard)
