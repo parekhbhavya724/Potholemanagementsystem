@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PotholeFix - Reporting Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--surface-0, #f5f5f5);
+            color: var(--text-primary, #333);
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: var(--surface-2, white);
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #d85a30;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-right: 1rem;
+            padding-right: 1rem;
+            border-right: 1px solid var(--border, #e0e0e0);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #d85a30;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .user-details {
+            font-size: 0.9rem;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--text-primary, #333);
+        }
+
+        .user-role {
+            font-size: 0.8rem;
+            color: var(--text-secondary, #666);
+        }
+
+        .btn {
+            padding: 0.65rem 1.5rem;
+            border: 1px solid var(--border-strong, #999);
+            background: transparent;
+            color: var(--text-primary, #333);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background: var(--surface-1, #f9f9f9);
+            border-color: #d85a30;
+        }
+
+        .btn-primary {
+            background: #d85a30;
+            color: white;
+            border-color: #d85a30;
+        }
+
+        .btn-primary:hover {
+            background: #993c1d;
+        }
+
+        .btn-success {
+            background: #639922;
+            color: white;
+            border-color: #639922;
+        }
+
+        .btn-danger {
+            background: #e24b4a;
+            color: white;
+            border-color: #e24b4a;
+        }
+
+        .btn-danger:hover {
+            background: #a32d2d;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* AUTH PAGES */
+        .auth-container {
+            display: flex;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #d85a30 0%, #993c1d 100%);
+        }
+
+        .auth-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .auth-left h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .auth-left p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            max-width: 400px;
+            margin-bottom: 2rem;
+        }
+
+        .auth-features {
+            display: grid;
+            gap: 1.5rem;
+            text-align: left;
+            max-width: 400px;
+        }
+
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+            min-width: 30px;
+        }
+
+        .feature-text h3 {
+            font-size: 1rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .feature-text p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin: 0;
+        }
+
+        .auth-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: white;
+        }
+
+        .auth-form {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-form h2 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .auth-form .subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #d85a30;
+            box-shadow: 0 0 0 3px rgba(216, 90, 48, 0.1);
+        }
+
+        .password-strength {
+            display: none;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        .password-strength.weak .password-strength-bar {
+            width: 33%;
+            background: #e24b4a;
+        }
+
+        .password-strength.medium .password-strength-bar {
+            width: 66%;
+            background: #ba7517;
+        }
+
+        .password-strength.strong .password-strength-bar {
+            width: 100%;
+            background: #639922;
+        }
+
+        .password-strength-text {
+            display: none;
+            font-size: 0.8rem;
+            margin-top: 0.3rem;
+        }
+
+        .form-group.has-password-check .password-strength-text {
+            display: block;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .checkbox-group a {
+            color: #d85a30;
+            text-decoration: none;
+        }
+
+        .checkbox-group a:hover {
+            text-decoration: underline;
+        }
+
+        .form-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: #d85a30;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .form-btn:hover {
+            background: #993c1d;
+        }
+
+        .form-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .toggle-auth {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .toggle-auth a {
+            color: #d85a30;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .toggle-auth a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: #fcebeb;
+            color: #a32d2d;
+            border-left: 4px solid #e24b4a;
+            padding: 0.8rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            background: #eaf3de;
+            color: #3b6d11;
+            border-left: 4px solid #639922;
+            padding: 0.8rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            color: #999;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        /* MAIN APP PAGES */
+        .hero {
+            background: linear-gradient(135deg, #d85a30 0%, #993c1d 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            border-radius: 12px;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-lg {
+            padding: 1rem 2rem;
+            font-size: 1.05rem;
+        }
+
+        .form-section {
+            background: var(--surface-2, white);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border, #e0e0e0);
+            margin-bottom: 2rem;
+        }
+
+        .severity-options {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .severity-btn {
+            flex: 1;
+            padding: 0.8rem;
+            border: 2px solid var(--border, #e0e0e0);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .severity-btn.high {
+            border-color: #e24b4a;
+        }
+
+        .severity-btn.medium {
+            border-color: #ba7517;
+        }
+
+        .severity-btn.low {
+            border-color: #639922;
+        }
+
+        .severity-btn.active {
+            background: currentColor;
+            color: white;
+        }
+
+        .map-container {
+            background: var(--surface-2, white);
+            border: 1px solid var(--border, #e0e0e0);
+            border-radius: 12px;
+            height: 400px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: var(--text-secondary, #666);
+            gap: 1rem;
+        }
+
+        .map-placeholder i {
+            font-size: 3rem;
+            opacity: 0.3;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface-2, white);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border, #e0e0e0);
+            text-align: center;
+        }
+
+        .stat-card.high {
+            border-left: 4px solid #e24b4a;
+        }
+
+        .stat-card.medium {
+            border-left: 4px solid #ba7517;
+        }
+
+        .stat-card.low {
+            border-left: 4px solid #639922;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #d85a30;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary, #666);
+            font-size: 0.9rem;
+        }
+
+        .report-list {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .report-card {
+            background: var(--surface-2, white);
+            border: 1px solid var(--border, #e0e0e0);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .report-info h3 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary, #333);
+        }
+
+        .report-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .meta-item {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-secondary, #666);
+        }
+
+        .meta-item strong {
+            color: var(--text-primary, #333);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .status-reported {
+            background: #e6f1fb;
+            color: #185fa5;
+        }
+
+        .status-assigned {
+            background: #faeeda;
+            color: #854f0b;
+        }
+
+        .status-in_progress {
+            background: #f4c0d1;
+            color: #993556;
+        }
+
+        .status-resolved {
+            background: #eaf3de;
+            color: #3b6d11;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 140px;
+        }
+
+        .btn-sm {
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+            background: #d85a30;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-sm:hover {
+            background: #993c1d;
+        }
+
+        .btn-sm.secondary {
+            background: var(--surface-1, #f9f9f9);
+            color: var(--text-primary, #333);
+            border: 1px solid var(--border, #e0e0e0);
+        }
+
+        .btn-sm.secondary:hover {
+            background: var(--surface-1, #f0f0f0);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 2rem;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            margin-bottom: 2rem;
+        }
+
+        .tab-btn {
+            padding: 1rem 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text-secondary, #666);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .tab-btn.active {
+            color: #d85a30;
+            border-bottom-color: #d85a30;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border, #e0e0e0);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #639922;
+            transition: width 0.3s;
+        }
+
+        .filter-section {
+            background: var(--surface-1, #f9f9f9);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .filter-section select {
+            padding: 0.8rem;
+            border: 1px solid var(--border, #e0e0e0);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .auth-container {
+                flex-direction: column;
+            }
+
+            .auth-left {
+                padding: 2rem 1rem;
+            }
+
+            .auth-right {
+                padding: 1rem;
+            }
+
+            .report-card {
+                grid-template-columns: 1fr;
+            }
+
+            .navbar {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+
+            .user-info {
+                border-right: none;
+                border-top: 1px solid var(--border, #e0e0e0);
+                width: 100%;
+                padding-top: 1rem;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- AUTH PAGE -->
+    <div id="auth" class="page active">
+        <div class="auth-container">
+            <div class="auth-left">
+                <h1>🛣️ PotholeFix</h1>
+                <p>Report road hazards. Fix your streets. Together.</p>
+                <div class="auth-features">
+                    <div class="feature">
+                        <div class="feature-icon">📍</div>
+                        <div class="feature-text">
+                            <h3>GPS Location Tracking</h3>
+                            <p>Report with precise geolocation</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-text">
+                            <h3>Real-Time Tracking</h3>
+                            <p>Monitor repair progress</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">👥</div>
+                        <div class="feature-text">
+                            <h3>Multi-User Support</h3>
+                            <p>Citizens & authorities working together</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-right">
+                <!-- LOGIN FORM -->
+                <div id="loginForm" class="auth-form" style="display: block;">
+                    <h2>Welcome Back</h2>
+                    <p class="subtitle">Sign in to your PotholeFix account</p>
+
+                    <div class="error-message" id="loginError"></div>
+                    <div class="success-message" id="loginSuccess"></div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="loginEmail" placeholder="your@email.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="••••••••" required>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="rememberMe">
+                        <label for="rememberMe">Remember me</label>
+                    </div>
+
+                    <button class="form-btn" onclick="handleLogin()">Sign In</button>
+
+                    <div class="divider">or</div>
+
+                    <button class="form-btn" style="background: #4285f4; margin-bottom: 0.5rem;">
+                        <i class="fab fa-google"></i> Continue with Google
+                    </button>
+
+                    <div class="toggle-auth">
+                        Don't have an account? <a onclick="toggleAuthMode()">Sign Up</a>
+                    </div>
+                </div>
+
+                <!-- SIGNUP FORM -->
+                <div id="signupForm" class="auth-form" style="display: none;">
+                    <h2>Create Account</h2>
+                    <p class="subtitle">Join PotholeFix today</p>
+
+                    <div class="error-message" id="signupError"></div>
+                    <div class="success-message" id="signupSuccess"></div>
+
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="signupName" placeholder="John Doe" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="signupEmail" placeholder="your@email.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="signupPhone" placeholder="+91 98765 43210" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Account Type</label>
+                        <select id="accountType">
+                            <option value="citizen">Citizen</option>
+                            <option value="authority">Authority/Admin</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group has-password-check">
+                        <label>Password</label>
+                        <input type="password" id="signupPassword" placeholder="••••••••" oninput="checkPasswordStrength()" required>
+                        <div class="password-strength" id="passwordStrength">
+                            <div class="password-strength-bar"></div>
+                        </div>
+                        <div class="password-strength-text" id="passwordStrengthText"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="signupPasswordConfirm" placeholder="••••••••" required>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="agreeTerms" required>
+                        <label for="agreeTerms">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+                    </div>
+
+                    <button class="form-btn" onclick="handleSignup()">Create Account</button>
+
+                    <div class="toggle-auth">
+                        Already have an account? <a onclick="toggleAuthMode()">Sign In</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVBAR (Hidden on auth page) -->
+    <nav class="navbar" id="navbar" style="display: none;">
+        <div class="logo">
+            <i class="fas fa-road"></i> PotholeFix
+        </div>
+        <div class="nav-buttons">
+            <button class="btn" onclick="switchPage('home')">Home</button>
+            <button class="btn" onclick="switchPage('citizen')">Report Pothole</button>
+            <button class="btn btn-primary" onclick="switchPage('admin')">Admin Dashboard</button>
+            
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-details">
+                    <div class="user-name" id="userName">User Name</div>
+                    <div class="user-role" id="userRole">Citizen</div>
+                </div>
+            </div>
+
+            <button class="btn btn-danger" onclick="handleLogout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </nav>
+
+    <div class="container" id="mainContent" style="display: none;">
+        <!-- HOME PAGE -->
+        <div id="home" class="page active">
+            <div class="hero">
+                <h1>🛣️ PotholeFix</h1>
+                <p>Report road hazards. Fix your streets. Together.</p>
+                <div class="cta-buttons">
+                    <button class="btn btn-lg" style="background: white; color: #d85a30; border: 2px solid white;" onclick="switchPage('citizen')">
+                        <i class="fas fa-plus-circle"></i> Report a Pothole
+                    </button>
+                    <button class="btn btn-lg" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white;" onclick="switchPage('admin')">
+                        <i class="fas fa-chart-bar"></i> View Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">📍</div>
+                    <h3>GPS Geolocation</h3>
+                    <p>Precise location tracking for every report</p>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">📊</div>
+                    <h3>Real-time Tracking</h3>
+                    <p>Monitor repair progress from start to finish</p>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">👥</div>
+                    <h3>Multi-user Support</h3>
+                    <p>Citizens report, authorities manage</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CITIZEN REPORT PAGE -->
+        <div id="citizen" class="page">
+            <div style="margin-bottom: 2rem;">
+                <h2>Report a Pothole</h2>
+                <p style="color: var(--text-secondary, #666);">Help us fix your roads. Fill in the details below.</p>
+            </div>
+
+            <div class="success-message" id="successMsg">
+                <i class="fas fa-check-circle"></i> Pothole reported successfully! Tracking ID: <strong id="trackingId"></strong>
+            </div>
+
+            <div class="form-section">
+                <h3 style="margin-bottom: 1.5rem;">Location Details</h3>
+
+                <div class="map-container">
+                    <div class="map-placeholder">
+                        <i class="fas fa-map-location-dot"></i>
+                        <span>Click to set location or enable GPS</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label>Latitude</label>
+                        <input type="number" id="latitude" placeholder="19.0760" step="0.0001" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Longitude</label>
+                        <input type="number" id="longitude" placeholder="72.8777" step="0.0001" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Address</label>
+                    <input type="text" id="address" placeholder="e.g., Marine Drive, Mumbai" required>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 style="margin-bottom: 1.5rem;">Pothole Details</h3>
+
+                <div class="form-group">
+                    <label>Severity Level</label>
+                    <div class="severity-options">
+                        <button type="button" class="severity-btn high" style="color: #e24b4a;" onclick="selectSeverity('high', this)">🔴 High</button>
+                        <button type="button" class="severity-btn medium" style="color: #ba7517;" onclick="selectSeverity('medium', this)">🟠 Medium</button>
+                        <button type="button" class="severity-btn low" style="color: #639922;" onclick="selectSeverity('low', this)">🟢 Low</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Dimensions (Approx.)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <input type="number" id="width" placeholder="Width (cm)" min="0">
+                        <input type="number" id="depth" placeholder="Depth (cm)" min="0">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="description" placeholder="Describe the pothole condition, damage to vehicles, etc." style="width: 100%; padding: 0.8rem; border: 1px solid #e0e0e0; border-radius: 6px; min-height: 120px; font-family: inherit;" required></textarea>
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-lg" style="width: 100%; margin-bottom: 1rem;" onclick="submitReport()">
+                <i class="fas fa-send"></i> Submit Report
+            </button>
+        </div>
+
+        <!-- CITIZEN REPORTS VIEW -->
+        <div id="citizen-reports" class="page">
+            <div style="margin-bottom: 2rem;">
+                <h2>My Pothole Reports</h2>
+                <p style="color: var(--text-secondary, #666);">Track the status of your submitted reports</p>
+            </div>
+
+            <div class="filter-section">
+                <select id="filterStatus" onchange="filterReports()">
+                    <option value="">All Statuses</option>
+                    <option value="reported">Reported</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+                <select id="filterSeverity" onchange="filterReports()">
+                    <option value="">All Severities</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+
+            <div class="report-list" id="citizenReportsList"></div>
+
+            <button class="btn btn-primary" style="margin-top: 1rem;" onclick="switchPage('citizen')">
+                <i class="fas fa-plus-circle"></i> Report New Pothole
+            </button>
+        </div>
+
+        <!-- ADMIN DASHBOARD -->
+        <div id="admin" class="page">
+            <div style="margin-bottom: 2rem;">
+                <h2>Authority Dashboard</h2>
+                <p style="color: var(--text-secondary, #666);">Manage and prioritize pothole repairs</p>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchAdminTab('overview')">Overview</button>
+                <button class="tab-btn" onclick="switchAdminTab('manage')">Manage Reports</button>
+                <button class="tab-btn" onclick="switchAdminTab('progress')">Progress Tracking</button>
+            </div>
+
+            <div id="overview-tab" class="admin-tab active">
+                <div class="dashboard-grid">
+                    <div class="stat-card high">
+                        <div class="stat-number" id="countHigh">3</div>
+                        <div class="stat-label">High Severity</div>
+                    </div>
+                    <div class="stat-card medium">
+                        <div class="stat-number" id="countMedium">7</div>
+                        <div class="stat-label">Medium Severity</div>
+                    </div>
+                    <div class="stat-card low">
+                        <div class="stat-number" id="countLow">12</div>
+                        <div class="stat-label">Low Severity</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #639922;">
+                        <div class="stat-number" style="color: #639922;">8</div>
+                        <div class="stat-label">Resolved This Week</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 1rem;">Completion Rate</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 62%"></div>
+                </div>
+                <p style="font-size: 0.9rem; color: var(--text-secondary, #666); margin-top: 0.5rem;">62% of reported potholes resolved</p>
+            </div>
+
+            <div id="manage-tab" class="admin-tab" style="display: none;">
+                <div class="filter-section">
+                    <select>
+                        <option value="">All Statuses</option>
+                        <option value="reported">Reported</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                    <select>
+                        <option value="">All Severities</option>
+                        <option value="high">High Priority</option>
+                        <option value="medium">Medium Priority</option>
+                        <option value="low">Low Priority</option>
+                    </select>
+                    <input type="date" placeholder="Filter by date">
+                </div>
+
+                <div class="report-list" id="adminReportsList"></div>
+            </div>
+
+            <div id="progress-tab" class="admin-tab" style="display: none;">
+                <h3 style="margin-bottom: 1.5rem;">Active Repair Projects</h3>
+                <div class="report-list" id="progressReportsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentReport = null;
+        let selectedSeverity = null;
+        let allReports = [
+            {
+                id: 'PH001',
+                lat: 19.0760,
+                lon: 72.8777,
+                address: 'Marine Drive, Mumbai',
+                severity: 'high',
+                description: 'Large pothole causing traffic hazards',
+                width: 45,
+                depth: 12,
+                email: 'citizen1@email.com',
+                status: 'in_progress',
+                submittedDate: '2024-08-25',
+                assignedTo: 'Team A',
+                progressPercent: 75
+            },
+            {
+                id: 'PH002',
+                lat: 19.0850,
+                lon: 72.8600,
+                address: 'Bandra Worli Sea Link',
+                severity: 'medium',
+                description: 'Medium sized pothole on left lane',
+                width: 30,
+                depth: 8,
+                email: 'citizen2@email.com',
+                status: 'assigned',
+                submittedDate: '2024-08-26',
+                assignedTo: 'Team B',
+                progressPercent: 30
+            }
+        ];
+
+        // Check if user is already logged in
+        function checkAuthStatus() {
+            const user = localStorage.getItem('currentUser');
+            if (user) {
+                currentUser = JSON.parse(user);
+                showAppAfterLogin();
+            }
+        }
+
+        function toggleAuthMode() {
+            document.getElementById('loginForm').style.display = 
+                document.getElementById('loginForm').style.display === 'none' ? 'block' : 'none';
+            document.getElementById('signupForm').style.display = 
+                document.getElementById('signupForm').style.display === 'none' ? 'block' : 'none';
+            
+            // Clear error messages
+            document.getElementById('loginError').classList.remove('show');
+            document.getElementById('signupError').classList.remove('show');
+        }
+
+        function checkPasswordStrength() {
+            const password = document.getElementById('signupPassword').value;
+            const strengthDiv = document.getElementById('passwordStrength');
+            const textDiv = document.getElementById('passwordStrengthText');
+            
+            if (password.length === 0) {
+                strengthDiv.style.display = 'none';
+                return;
+            }
+
+            strengthDiv.style.display = 'block';
+            strengthDiv.className = 'password-strength';
+
+            let strength = 'weak';
+            if (password.length >= 8 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /[0-9]/.test(password)) {
+                strength = 'strong';
+                textDiv.textContent = '✓ Strong password';
+                textDiv.style.color = '#639922';
+            } else if (password.length >= 6 && /[a-z]/.test(password) && /[0-9]/.test(password)) {
+                strength = 'medium';
+                textDiv.textContent = '~ Medium strength';
+                textDiv.style.color = '#ba7517';
+            } else {
+                strength = 'weak';
+                textDiv.textContent = '✗ Weak password';
+                textDiv.style.color = '#e24b4a';
+            }
+
+            strengthDiv.classList.add(strength);
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+
+            // Clear previous error
+            errorDiv.classList.remove('show');
+
+            // Basic validation
+            if (!email || !password) {
+                errorDiv.textContent = '❌ Please fill in all fields';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (!email.includes('@')) {
+                errorDiv.textContent = '❌ Please enter a valid email';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            // Mock login - create user object
+            const user = {
+                email: email,
+                name: email.split('@')[0],
+                role: 'citizen',
+                id: Math.random().toString(36).substr(2, 9)
+            };
+
+            // Store in localStorage
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            currentUser = user;
+
+            showAppAfterLogin();
+        }
+
+        function handleSignup() {
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const phone = document.getElementById('signupPhone').value;
+            const accountType = document.getElementById('accountType').value;
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('signupPasswordConfirm').value;
+            const agreeTerms = document.getElementById('agreeTerms').checked;
+            const errorDiv = document.getElementById('signupError');
+
+            errorDiv.classList.remove('show');
+
+            if (!name || !email || !phone || !password || !confirmPassword) {
+                errorDiv.textContent = '❌ Please fill in all fields';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (!email.includes('@')) {
+                errorDiv.textContent = '❌ Please enter a valid email';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password.length < 6) {
+                errorDiv.textContent = '❌ Password must be at least 6 characters';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorDiv.textContent = '❌ Passwords do not match';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (!agreeTerms) {
+                errorDiv.textContent = '❌ Please agree to terms and conditions';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            // Mock signup - create user object
+            const user = {
+                name: name,
+                email: email,
+                phone: phone,
+                role: accountType,
+                id: Math.random().toString(36).substr(2, 9),
+                createdDate: new Date().toISOString()
+            };
+
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            currentUser = user;
+
+            showAppAfterLogin();
+        }
+
+        function showAppAfterLogin() {
+            // Hide auth page
+            document.getElementById('auth').classList.remove('active');
+            document.getElementById('mainContent').style.display = 'block';
+            document.getElementById('navbar').style.display = 'flex';
+
+            // Update navbar with user info
+            const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase();
+            document.getElementById('userAvatar').textContent = initials || 'U';
+            document.getElementById('userName').textContent = currentUser.name || currentUser.email;
+            document.getElementById('userRole').textContent = currentUser.role === 'citizen' ? 'Citizen Reporter' : 'Authority Admin';
+
+            // Show home page
+            switchPage('home');
+        }
+
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('currentUser');
+                currentUser = null;
+
+                // Show auth page
+                document.getElementById('auth').classList.add('active');
+                document.getElementById('mainContent').style.display = 'none';
+                document.getElementById('navbar').style.display = 'none';
+
+                // Reset forms
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('signupForm').style.display = 'none';
+                document.getElementById('loginEmail').value = '';
+                document.getElementById('loginPassword').value = '';
+            }
+        }
+
+        function switchPage(pageId) {
+            document.querySelectorAll('#mainContent > .page').forEach(p => p.classList.remove('active'));
+            const page = document.getElementById(pageId);
+            if (page) {
+                page.classList.add('active');
+            }
+            if (pageId === 'citizen-reports') {
+                loadCitizenReports();
+            } else if (pageId === 'admin') {
+                loadAdminReports();
+            }
+        }
+
+        function selectSeverity(level, btn) {
+            document.querySelectorAll('.severity-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedSeverity = level;
+        }
+
+        function submitReport() {
+            const lat = document.getElementById('latitude').value;
+            const lon = document.getElementById('longitude').value;
+            const address = document.getElementById('address').value;
+            const desc = document.getElementById('description').value;
+
+            if (!lat || !lon || !address || !desc || !selectedSeverity) {
+                alert('Please fill all required fields');
+                return;
+            }
+
+            const newReport = {
+                id: `PH${String(allReports.length + 1).padStart(3, '0')}`,
+                lat: parseFloat(lat),
+                lon: parseFloat(lon),
+                address,
+                severity: selectedSeverity,
+                description: desc,
+                email: currentUser.email,
+                status: 'reported',
+                submittedDate: new Date().toISOString().split('T')[0],
+                assignedTo: 'Pending',
+                progressPercent: 0
+            };
+
+            allReports.push(newReport);
+            document.getElementById('trackingId').textContent = newReport.id;
+            document.getElementById('successMsg').classList.add('show');
+
+            setTimeout(() => {
+                document.getElementById('successMsg').classList.remove('show');
+                document.getElementById('latitude').value = '';
+                document.getElementById('longitude').value = '';
+                document.getElementById('address').value = '';
+                document.getElementById('description').value = '';
+                selectedSeverity = null;
+                document.querySelectorAll('.severity-btn').forEach(b => b.classList.remove('active'));
+            }, 3000);
+        }
+
+        function loadCitizenReports() {
+            switchPage('citizen-reports');
+            const list = document.getElementById('citizenReportsList');
+            list.innerHTML = allReports.filter(r => r.email === currentUser.email).map(report => `
+                <div class="report-card">
+                    <div class="report-info">
+                        <h3>Report #${report.id}</h3>
+                        <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">${report.address}</p>
+                        <div class="report-meta">
+                            <div class="meta-item">
+                                <strong>Severity:</strong> ${report.severity}
+                            </div>
+                            <div class="meta-item">
+                                <strong>Submitted:</strong> ${report.submittedDate}
+                            </div>
+                        </div>
+                    </div>
+                    <span class="status-badge status-${report.status}">${report.status.toUpperCase()}</span>
+                </div>
+            `).join('');
+        }
+
+        function loadAdminReports() {
+            const list = document.getElementById('adminReportsList');
+            list.innerHTML = allReports.map(report => `
+                <div class="report-card">
+                    <div class="report-info">
+                        <h3>Report #${report.id}</h3>
+                        <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">${report.address}</p>
+                    </div>
+                    <span class="status-badge status-${report.status}">${report.status.toUpperCase()}</span>
+                </div>
+            `).join('');
+        }
+
+        function switchAdminTab(tabName) {
+            document.querySelectorAll('.admin-tab').forEach(t => t.style.display = 'none');
+            document.getElementById(tabName + '-tab').style.display = 'block';
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function filterReports() {
+            // Filter logic can be added here
+        }
+
+        // Initialize
+        checkAuthStatus();
+    </script>
+</body>
+</html>
