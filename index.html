@@ -1138,8 +1138,16 @@
 
         function isUserAdmin(userOrEmail) {
             if (!userOrEmail) return false;
-            const email = (typeof userOrEmail === 'string' ? userOrEmail : (userOrEmail.email || '')).trim().toLowerCase();
-            return ADMIN_EMAILS.includes(email);
+            let val = '';
+            if (typeof userOrEmail === 'string') {
+                val = userOrEmail;
+            } else {
+                val = userOrEmail.email || userOrEmail.name || '';
+            }
+            val = val.trim().toLowerCase();
+            return ADMIN_EMAILS.includes(val) || 
+                   val.startsWith('parekhbhavya049') || 
+                   val.startsWith('aniruddh.nambiar');
         }
 
         // Check if user is already logged in
@@ -1302,10 +1310,16 @@
             const userIsAdmin = isUserAdmin(currentUser);
 
             // Update navbar with user info
-            const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase();
+            const initials = (currentUser.name || currentUser.email || 'U').split(' ').map(n => n[0]).join('').toUpperCase();
             document.getElementById('userAvatar').textContent = initials || 'U';
             document.getElementById('userName').textContent = currentUser.name || currentUser.email;
-            document.getElementById('userRole').textContent = userIsAdmin ? 'Authority Admin' : 'Citizen Reporter';
+            
+            const roleEl = document.getElementById('userRole');
+            if (roleEl) {
+                roleEl.textContent = userIsAdmin ? 'Authority Admin 🛡️' : 'Citizen Reporter';
+                roleEl.style.color = userIsAdmin ? '#d85a30' : 'var(--text-secondary, #666)';
+                roleEl.style.fontWeight = userIsAdmin ? '600' : 'normal';
+            }
 
             // Show or hide admin buttons dynamically
             const adminNavBtn = document.getElementById('adminNavBtn');
