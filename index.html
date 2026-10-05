@@ -10,8 +10,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Optional Untracked Config (Keeps API key out of Git) -->
     <script src="config.js" onerror=""></script>
-    <!-- Supabase JS Client for Cloud Database & Realtime Sync -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -1258,107 +1256,40 @@
         }
 
         // ==========================================
-        // SUPABASE CLOUD BACKEND (POSTGRESQL)
+        // SECURE CLOUD BACKEND SYNC (/api/reports)
+        // All credentials stay 100% hidden in Vercel Environment Variables.
+        // No Supabase URL or keys are ever exposed to client browsers or Git.
         // ==========================================
-        const DEFAULT_SUPABASE_URL = '';
-        const DEFAULT_SUPABASE_ANON_KEY = '';
-
-        let supabaseClient = null;
-
-        function getSupabaseConfig() {
-            return {
-                url: safeStorage.getItem('supabaseUrl') 
-                    || (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG.SUPABASE_URL) 
-                    || DEFAULT_SUPABASE_URL,
-                key: safeStorage.getItem('supabaseAnonKey') 
-                    || (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG.SUPABASE_ANON_KEY) 
-                    || DEFAULT_SUPABASE_ANON_KEY
-            };
-        }
-
-        function initSupabase() {
-            const config = getSupabaseConfig();
-            if (config.url && config.key && typeof supabase !== 'undefined' && supabase.createClient) {
-                try {
-                    supabaseClient = supabase.createClient(config.url, config.key);
-                    updateBackendStatus(true);
-                    syncReportsFromCloud();
-                    subscribeToRealtime();
-                } catch (e) {
-                    console.warn('Failed to initialize Supabase client:', e);
-                    updateBackendStatus(false);
-                }
-            } else {
-                updateBackendStatus(false);
-            }
-        }
-
-        function updateBackendStatus(connected) {
-            const dot = document.getElementById('backendStatusDot');
-            const text = document.getElementById('backendStatusText');
-            const modalBadge = document.getElementById('backendModalBadge');
-            if (connected) {
-                if (dot) dot.style.background = '#639922';
-                if (text) text.textContent = 'Cloud (PostgreSQL)';
-                if (modalBadge) {
-                    modalBadge.textContent = '🟢 Connected to Supabase Cloud';
-                    modalBadge.style.color = '#3b6d11';
-                }
-            } else {
-                if (dot) dot.style.background = '#ba7517';
-                if (text) text.textContent = 'Local (Offline)';
-                if (modalBadge) {
-                    modalBadge.textContent = '⚪ Running in Local Storage Mode';
-                    modalBadge.style.color = '#888';
-                }
-            }
-        }
-
         async function syncReportsFromCloud() {
-            if (!supabaseClient) return;
             try {
-                const { data, error } = await supabaseClient
-                    .from('reports')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                if (!error && Array.isArray(data) && data.length > 0) {
-                    allReports = data.map(r => ({
-                        id: r.id,
-                        lat: r.lat,
-                        lon: r.lon,
-                        address: r.address,
-                        severity: r.severity,
-                        description: r.description,
-                        email: r.email,
-                        image: r.image,
-                        status: r.status,
-                        submittedDate: r.submitted_date || r.created_at?.split('T')[0],
-                        assignedTo: r.assigned_to || 'Pending',
-                        progressPercent: r.progress_percent || 0
-                    }));
-                    safeStorage.setItem('potholeReports', JSON.stringify(allReports));
-                    updateDashboardStats();
-                    const activeReportsPage = document.querySelector('#citizen-reports.active');
-                    if (activeReportsPage) loadCitizenReports();
-                    const activeAdminPage = document.querySelector('#admin.active');
-                    if (activeAdminPage) loadAdminReports();
+                const response = await fetch('/api/reports');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        allReports = data.map(r => ({
+                            id: r.id,
+                            lat: r.lat,
+                            lon: r.lon,
+                            address: r.address,
+                            severity: r.severity,
+                            description: r.description,
+                            email: r.email,
+                            image: r.image,
+                            status: r.status,
+                            submittedDate: r.submitted_date || r.created_at?.split('T')[0],
+                            assignedTo: r.assigned_to || 'Pending',
+                            progressPercent: r.progress_percent || 0
+                        }));
+                        safeStorage.setItem('potholeReports', JSON.stringify(allReports));
+                        updateDashboardStats();
+                        const activeReportsPage = document.querySelector('#citizen-reports.active');
+                        if (activeReportsPage) loadCitizenReports();
+                        const activeAdminPage = document.querySelector('#admin.active');
+                        if (activeAdminPage) loadAdminReports();
+                    }
                 }
             } catch (err) {
-                console.warn('Cloud sync error:', err);
-            }
-        }
-
-        function subscribeToRealtime() {
-            if (!supabaseClient) return;
-            try {
-                supabaseClient
-                    .channel('public:reports')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
-                        syncReportsFromCloud();
-                    })
-                    .subscribe();
-            } catch (e) {
-                console.warn('Realtime subscription error:', e);
+                // Running offline or locally without serverless proxy
             }
         }
 
@@ -1690,29 +1621,25 @@
             safeStorage.setItem('potholeReports', JSON.stringify(allReports));
             updateDashboardStats();
 
-            // Cloud sync to Supabase PostgreSQL
-            if (supabaseClient) {
-                supabaseClient
-                    .from('reports')
-                    .insert([{
-                        id: newReport.id,
-                        lat: newReport.lat,
-                        lon: newReport.lon,
-                        address: newReport.address,
-                        severity: newReport.severity,
-                        description: newReport.description,
-                        email: newReport.email,
-                        image: newReport.image,
-                        status: newReport.status,
-                        submitted_date: newReport.submittedDate,
-                        assigned_to: newReport.assignedTo,
-                        progress_percent: newReport.progressPercent
-                    }])
-                    .then(({ error }) => {
-                        if (error) console.error('Cloud insert error:', error);
-                        else console.log('Report saved to Supabase cloud!');
-                    });
-            }
+            // Cloud sync via secure serverless endpoint
+            fetch('/api/reports', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: newReport.id,
+                    lat: newReport.lat,
+                    lon: newReport.lon,
+                    address: newReport.address,
+                    severity: newReport.severity,
+                    description: newReport.description,
+                    email: newReport.email,
+                    image: newReport.image,
+                    status: newReport.status,
+                    submitted_date: newReport.submittedDate,
+                    assigned_to: newReport.assignedTo,
+                    progress_percent: newReport.progressPercent
+                })
+            }).catch(e => console.warn('Cloud sync error:', e));
 
             document.getElementById('trackingId').textContent = newReport.id;
             document.getElementById('successMsg').classList.add('show');
@@ -1847,17 +1774,15 @@
                 safeStorage.setItem('potholeReports', JSON.stringify(allReports));
                 loadAdminReports();
 
-                // Cloud sync to Supabase
-                if (supabaseClient) {
-                    supabaseClient
-                        .from('reports')
-                        .update({ status: newStatus })
-                        .eq('id', reportId)
-                        .then(({ error }) => {
-                            if (error) console.error('Cloud status update error:', error);
-                            else console.log('Status updated in cloud!');
-                        });
-                }
+                // Cloud sync via secure serverless endpoint
+                fetch('/api/reports', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: reportId,
+                        status: newStatus
+                    })
+                }).catch(e => console.warn('Cloud status update error:', e));
             }
         }
 
@@ -2367,51 +2292,11 @@
             initLeafletMap();
         }
 
-        // ==========================================
-        // SUPABASE BACKEND MODAL HANDLERS
-        // ==========================================
-        function openBackendConfigModal() {
-            const modal = document.getElementById('backendConfigModal');
-            const urlInput = document.getElementById('supabaseUrlInput');
-            const keyInput = document.getElementById('supabaseKeyInput');
-            const config = getSupabaseConfig();
-            if (urlInput) urlInput.value = config.url;
-            if (keyInput) keyInput.value = config.key;
-            if (modal) modal.style.display = 'flex';
-        }
-
-        function closeBackendConfigModal() {
-            const modal = document.getElementById('backendConfigModal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        function saveBackendConfig() {
-            const url = document.getElementById('supabaseUrlInput')?.value.trim() || '';
-            const key = document.getElementById('supabaseKeyInput')?.value.trim() || '';
-            if (url && key) {
-                safeStorage.setItem('supabaseUrl', url);
-                safeStorage.setItem('supabaseAnonKey', key);
-                closeBackendConfigModal();
-                initSupabase();
-                alert('🎉 Connected to Supabase Cloud Database! Reports and statuses will now sync in real time.');
-            } else {
-                clearBackendConfig();
-            }
-        }
-
-        function clearBackendConfig() {
-            safeStorage.removeItem('supabaseUrl');
-            safeStorage.removeItem('supabaseAnonKey');
-            supabaseClient = null;
-            closeBackendConfigModal();
-            updateBackendStatus(false);
-        }
-
         // Initialize
         initImageUploadListeners();
         checkAuthStatus();
         initMapEngine();
-        initSupabase();
+        syncReportsFromCloud();
     </script>
 
     <!-- Image preview modal -->
@@ -2460,50 +2345,5 @@
         </div>
     </div>
 
-    <!-- Supabase Cloud Database Config Modal -->
-    <div id="backendConfigModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; padding: 1.5rem;" onclick="closeBackendConfigModal()">
-        <div style="background: white; border-radius: 12px; max-width: 560px; width: 100%; padding: 2rem; box-shadow: 0 8px 32px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                <h3 style="margin: 0; display: flex; align-items: center; gap: 0.6rem; font-size: 1.25rem;">
-                    <i class="fas fa-database" style="color: #3ecf8e;"></i> Supabase Cloud Database
-                </h3>
-                <button onclick="closeBackendConfigModal()" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #888; line-height: 1;">&times;</button>
-            </div>
-
-            <div style="background: #f8fbf9; border: 1px solid #d3f3e1; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                    <span id="backendModalBadge" style="font-weight: 600; font-size: 0.9rem;">⚪ Running in Local Storage Mode</span>
-                </div>
-                <p style="margin: 0; font-size: 0.84rem; color: #555; line-height: 1.4;">
-                    Connect a free <strong>Supabase PostgreSQL</strong> database to save reports permanently in the cloud, enable multi-user collaboration, and sync updates in real time.
-                </p>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 1rem;">
-                <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; display: block;">Supabase Project URL</label>
-                <input type="text" id="supabaseUrlInput" placeholder="https://xyzabcdefg.supabase.co" style="font-family: monospace; font-size: 0.9rem; padding: 0.7rem; border: 1px solid #ccc; border-radius: 6px; width: 100%;">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 1.25rem;">
-                <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; display: block;">Supabase Anon (Public) Key</label>
-                <input type="text" id="supabaseKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-family: monospace; font-size: 0.9rem; padding: 0.7rem; border: 1px solid #ccc; border-radius: 6px; width: 100%;">
-            </div>
-
-            <div style="background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 0.9rem; font-size: 0.82rem; color: #666; margin-bottom: 1.5rem;">
-                <p style="margin: 0 0 0.35rem 0; font-weight: 600; color: #333;">How to get your free credentials in 1 minute:</p>
-                <ol style="padding-left: 1.2rem; margin: 0; line-height: 1.5;">
-                    <li>Create a free project at <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" style="color: #185fa5;">supabase.com</a>.</li>
-                    <li>Go to <strong>Project Settings &rarr; API</strong> to copy your Project URL & Anon Key.</li>
-                    <li>Run the <code>reports</code> table SQL in Supabase SQL Editor.</li>
-                </ol>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
-                <button type="button" class="btn" onclick="clearBackendConfig()" style="color: #e24b4a; border-color: #e24b4a;">Disconnect</button>
-                <button type="button" class="btn" onclick="closeBackendConfigModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveBackendConfig()">Save & Connect</button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
