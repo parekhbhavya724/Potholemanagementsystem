@@ -1,0 +1,11 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+config.js
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

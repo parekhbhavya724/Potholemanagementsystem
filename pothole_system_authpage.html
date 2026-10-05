@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PotholeFix - Reporting Portal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Map Libraries: Leaflet for zero-config fallback and OpenStreetMap tiles -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Optional Untracked Config (Keeps API key out of Git) -->
+    <script src="config.js" onerror=""></script>
     <style>
         * {
             margin: 0;
@@ -28,7 +33,7 @@
             align-items: center;
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 1000;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
@@ -449,6 +454,31 @@
             margin-bottom: 2rem;
         }
 
+        .image-upload-area {
+            border: 2px dashed #d85a30;
+            border-radius: 8px;
+            padding: 2.25rem 1.5rem;
+            text-align: center;
+            background: #fff9f6;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .image-upload-area:hover,
+        .image-upload-area.dragover {
+            border-color: #993c1d;
+            background: #ffece5;
+            box-shadow: 0 4px 12px rgba(216, 90, 48, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .image-upload-area:focus,
+        .image-upload-area:focus-visible {
+            outline: 2px solid #d85a30;
+            outline-offset: 2px;
+        }
+
         .severity-options {
             display: flex;
             gap: 1rem;
@@ -487,30 +517,59 @@
             background: var(--surface-2, white);
             border: 1px solid var(--border, #e0e0e0);
             border-radius: 12px;
-            height: 400px;
-            margin-bottom: 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            margin-bottom: 1.5rem;
             position: relative;
             overflow: hidden;
-        }
-
-        .map-placeholder {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
             display: flex;
-            align-items: center;
-            justify-content: center;
             flex-direction: column;
-            color: var(--text-secondary, #666);
-            gap: 1rem;
         }
 
-        .map-placeholder i {
-            font-size: 3rem;
-            opacity: 0.3;
+        .map-toolbar {
+            padding: 0.75rem 1rem;
+            background: #fafafa;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        #potholeMap {
+            width: 100%;
+            height: 380px;
+            background: #f0f0f0;
+            z-index: 1;
+        }
+
+        .leaflet-pane {
+            z-index: 10 !important;
+        }
+        .leaflet-top, .leaflet-bottom {
+            z-index: 20 !important;
+        }
+
+        .address-input-wrapper {
+            position: relative;
+        }
+
+        .address-spinner {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #d85a30;
+            display: none;
+            font-size: 0.95rem;
+        }
+
+        .address-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.8rem;
+            color: #3b6d11;
+            font-weight: 500;
         }
 
         .dashboard-grid {
@@ -938,29 +997,62 @@
             </div>
 
             <div class="form-section">
-                <h3 style="margin-bottom: 1.5rem;">Location Details</h3>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div>
+                        <h3 style="margin: 0;">Location Details</h3>
+                        <p style="color: var(--text-secondary, #666); font-size: 0.9rem; margin-top: 0.25rem;">
+                            Click anywhere on the map or drag the pin to automatically set coordinates and resolve the street address.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-sm" id="locateMeBtn" onclick="getCurrentLocation()" style="background: #e6f1fb; color: #185fa5; border-color: #bcd9f5; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <i class="fas fa-location-crosshairs"></i> Use Current GPS
+                        </button>
+                        <button type="button" class="btn btn-sm" onclick="openMapConfigModal()" style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem;" title="Map Provider Settings">
+                            <i class="fas fa-sliders"></i> <span id="mapKeyBtnLabel">Map Settings</span>
+                        </button>
+                    </div>
+                </div>
 
                 <div class="map-container">
-                    <div class="map-placeholder">
-                        <i class="fas fa-map-location-dot"></i>
-                        <span>Click to set location or enable GPS</span>
+                    <div class="map-toolbar">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #555;">
+                            <i class="fas fa-map-pin" style="color: #d85a30;"></i>
+                            <span id="mapInstruction">Click on the map or drag pin to mark the pothole</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span id="mapProviderBadge" style="font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #eaf3de; color: #3b6d11; border: 1px solid #c5e1a5; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                <i class="fas fa-circle-check"></i> OpenStreetMap (100% Free - No Card Needed)
+                            </span>
+                        </div>
                     </div>
+                    <div id="potholeMap"></div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                     <div class="form-group">
-                        <label>Latitude</label>
-                        <input type="number" id="latitude" placeholder="19.0760" step="0.0001" required>
+                        <label>Latitude <span style="font-size: 0.8rem; color: var(--text-secondary, #666); font-weight: normal;">(Auto-filled from map)</span></label>
+                        <input type="number" id="latitude" placeholder="19.076090" step="any" required onchange="handleManualCoordinateChange()">
                     </div>
                     <div class="form-group">
-                        <label>Longitude</label>
-                        <input type="number" id="longitude" placeholder="72.8777" step="0.0001" required>
+                        <label>Longitude <span style="font-size: 0.8rem; color: var(--text-secondary, #666); font-weight: normal;">(Auto-filled from map)</span></label>
+                        <input type="number" id="longitude" placeholder="72.877740" step="any" required onchange="handleManualCoordinateChange()">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Address</label>
-                    <input type="text" id="address" placeholder="e.g., Marine Drive, Mumbai" required>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label style="margin: 0;">Address <span style="font-size: 0.8rem; color: var(--text-secondary, #666); font-weight: normal;">(Auto-filled from map selection)</span></label>
+                        <span id="geocodeStatusBadge" class="address-badge" style="display: none;">
+                            <i class="fas fa-check-circle"></i> Address resolved
+                        </span>
+                    </div>
+                    <div class="address-input-wrapper">
+                        <input type="text" id="address" placeholder="Click any point on the map or type address..." required style="padding-right: 2.5rem;">
+                        <span id="addressSpinner" class="address-spinner">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -968,11 +1060,43 @@
                 <h3 style="margin-bottom: 1.5rem;">Pothole Image</h3>
 
                 <div class="form-group">
-                    <label>Upload Photo</label>
-                    <div style="border: 2px dashed #ccc; border-radius: 8px; padding: 2.5rem 1rem; text-align: center; background: #fafafa;">
-                        <i class="fas fa-camera" style="font-size: 2rem; color: #888; margin-bottom: 0.75rem;"></i>
-                        <p style="font-weight: 500; color: #333; margin-bottom: 0.25rem;">Upload or capture pothole photo</p>
-                        <p style="font-size: 0.85rem; color: #777;">Supports JPG, PNG, WEBP</p>
+                    <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; font-weight: 500;" onclick="openFilePicker(event)">
+                        <i class="fas fa-camera" style="color: #d85a30;"></i> Add Image
+                    </label>
+                    <input type="file" id="potholeImageInput" accept="image/*" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; opacity: 0;" onchange="handleImageSelect(event)">
+                    
+                    <div id="imageUploadArea" class="image-upload-area" onclick="openFilePicker(event)" role="button" tabindex="0" title="Click to open your files and select an image">
+                        <i class="fas fa-cloud-arrow-up" style="font-size: 2.2rem; color: #d85a30; margin-bottom: 0.75rem; display: block;"></i>
+                        <p style="font-weight: 600; color: #333; margin-bottom: 0.25rem; font-size: 1.05rem;">
+                            Click to select an image from your files
+                        </p>
+                        <p style="font-size: 0.85rem; color: #666; margin-bottom: 0.85rem;">
+                            Choose or capture a photo from your device (JPG, PNG, WEBP)
+                        </p>
+                        <button type="button" id="addImageBtn" class="btn btn-primary" onclick="openFilePicker(event)" style="padding: 0.55rem 1.4rem; font-size: 0.95rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; border-radius: 6px; box-shadow: 0 2px 4px rgba(216,90,48,0.25);">
+                            <i class="fas fa-image"></i> Add Image
+                        </button>
+                    </div>
+
+                    <div id="imagePreviewContainer" style="display: none; margin-top: 1rem;">
+                        <div style="display: flex; gap: 1.25rem; align-items: center; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem;">
+                            <img id="imagePreview" src="" alt="Selected Pothole Preview" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 6px rgba(0,0,0,0.08); flex-shrink: 0; cursor: pointer;" onclick="openImageModal(this.src)" title="Click to enlarge photo">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                                    <i class="fas fa-circle-check" style="color: #639922; font-size: 1rem;"></i>
+                                    <span id="imageFileName" style="font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">photo.jpg</span>
+                                </div>
+                                <p id="imageFileSize" style="font-size: 0.82rem; color: #777; margin-bottom: 0.75rem;">0 KB</p>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button type="button" class="btn" style="padding: 0.35rem 0.85rem; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem;" onclick="openFilePicker(event)">
+                                        <i class="fas fa-arrows-rotate"></i> Change Photo
+                                    </button>
+                                    <button type="button" class="btn" style="padding: 0.35rem 0.85rem; font-size: 0.85rem; color: #e24b4a; border-color: #e24b4a; display: inline-flex; align-items: center; gap: 0.4rem;" onclick="removeImage()">
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1097,11 +1221,46 @@
     </div>
 
     <script>
+        const safeStorage = {
+            getItem: (key) => {
+                try {
+                    return localStorage.getItem(key);
+                } catch (e) {
+                    return window._memStorage?.[key] || null;
+                }
+            },
+            setItem: (key, val) => {
+                try {
+                    localStorage.setItem(key, val);
+                } catch (e) {
+                    if (!window._memStorage) window._memStorage = {};
+                    window._memStorage[key] = String(val);
+                }
+            },
+            removeItem: (key) => {
+                try {
+                    localStorage.removeItem(key);
+                } catch (e) {
+                    if (window._memStorage) delete window._memStorage[key];
+                }
+            }
+        };
+
+        function getStoredReports() {
+            try {
+                const data = safeStorage.getItem('potholeReports');
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
         let currentUser = null;
         let currentReport = null;
         let selectedSeverity = null;
+        let currentImageData = null;
         // Pothole Reports data (Empty by default - no data till now)
-        let allReports = JSON.parse(localStorage.getItem('potholeReports')) || [];
+        let allReports = getStoredReports();
 
         function updateDashboardStats() {
             const resolved = allReports.filter(r => r.status === 'resolved').length;
@@ -1145,13 +1304,17 @@
 
         // Check if user is already logged in
         function checkAuthStatus() {
-            const user = localStorage.getItem('currentUser');
-            if (user) {
-                currentUser = JSON.parse(user);
-                // Synchronize role strictly with the admin list
-                currentUser.role = isUserAdmin(currentUser) ? 'authority' : 'citizen';
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                showAppAfterLogin();
+            try {
+                const user = safeStorage.getItem('currentUser');
+                if (user) {
+                    currentUser = JSON.parse(user);
+                    // Synchronize role strictly with the admin list
+                    currentUser.role = isUserAdmin(currentUser) ? 'authority' : 'citizen';
+                    safeStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    showAppAfterLogin();
+                }
+            } catch (e) {
+                console.warn('Could not restore auth status', e);
             }
         }
 
@@ -1229,7 +1392,7 @@
             };
 
             // Store in localStorage
-            localStorage.setItem('currentUser', JSON.stringify(user));
+            safeStorage.setItem('currentUser', JSON.stringify(user));
             currentUser = user;
 
             showAppAfterLogin();
@@ -1288,7 +1451,7 @@
                 createdDate: new Date().toISOString()
             };
 
-            localStorage.setItem('currentUser', JSON.stringify(user));
+            safeStorage.setItem('currentUser', JSON.stringify(user));
             currentUser = user;
 
             showAppAfterLogin();
@@ -1333,7 +1496,7 @@
 
         function handleLogout() {
             if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('currentUser');
+                safeStorage.removeItem('currentUser');
                 currentUser = null;
 
                 // Show auth page
@@ -1363,7 +1526,21 @@
             if (page) {
                 page.classList.add('active');
             }
-            if (pageId === 'citizen-reports') {
+            if (pageId === 'citizen') {
+                setTimeout(() => {
+                    if (!mapInitialized) {
+                        initMapEngine();
+                    } else {
+                        if (leafletMap) {
+                            leafletMap.invalidateSize();
+                        }
+                        if (googleMap && window.google && window.google.maps) {
+                            google.maps.event.trigger(googleMap, 'resize');
+                            googleMap.setCenter(currentCoords);
+                        }
+                    }
+                }, 150);
+            } else if (pageId === 'citizen-reports') {
                 loadCitizenReports();
             } else if (pageId === 'admin') {
                 loadAdminReports();
@@ -1395,6 +1572,7 @@
                 severity: selectedSeverity,
                 description: desc,
                 email: currentUser.email,
+                image: currentImageData || null,
                 status: 'reported',
                 submittedDate: new Date().toISOString().split('T')[0],
                 assignedTo: 'Pending',
@@ -1402,7 +1580,7 @@
             };
 
             allReports.push(newReport);
-            localStorage.setItem('potholeReports', JSON.stringify(allReports));
+            safeStorage.setItem('potholeReports', JSON.stringify(allReports));
             updateDashboardStats();
 
             document.getElementById('trackingId').textContent = newReport.id;
@@ -1414,8 +1592,15 @@
                 document.getElementById('longitude').value = '';
                 document.getElementById('address').value = '';
                 document.getElementById('description').value = '';
+                const widthEl = document.getElementById('width');
+                if (widthEl) widthEl.value = '';
+                const depthEl = document.getElementById('depth');
+                if (depthEl) depthEl.value = '';
                 selectedSeverity = null;
                 document.querySelectorAll('.severity-btn').forEach(b => b.classList.remove('active'));
+                removeImage();
+                const geocodeBadge = document.getElementById('geocodeStatusBadge');
+                if (geocodeBadge) geocodeBadge.style.display = 'none';
             }, 3000);
         }
 
@@ -1434,7 +1619,7 @@
             }
             list.innerHTML = myReports.map(report => `
                 <div class="report-card" style="display: flex; gap: 1rem; align-items: center;">
-                    ${report.image ? `<img src="${report.image}" alt="Pothole" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #e0e0e0; flex-shrink: 0;">` : ''}
+                    ${report.image ? `<img src="${report.image}" alt="Pothole" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #e0e0e0; flex-shrink: 0; cursor: pointer; transition: transform 0.2s;" onclick="openImageModal(this.src)" title="Click to enlarge photo">` : ''}
                     <div class="report-info" style="flex: 1;">
                         <h3>Report #${report.id}</h3>
                         <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">${report.address}</p>
@@ -1445,6 +1630,10 @@
                             <div class="meta-item">
                                 <strong>Submitted:</strong> ${report.submittedDate}
                             </div>
+                            ${report.lat && report.lon ? `
+                            <div class="meta-item">
+                                <strong>Map:</strong> <a href="https://www.google.com/maps?q=${report.lat},${report.lon}" target="_blank" rel="noopener noreferrer" style="color: #185fa5; text-decoration: none;"><i class="fas fa-location-dot"></i> ${Number(report.lat).toFixed(4)}, ${Number(report.lon).toFixed(4)}</a>
+                            </div>` : ''}
                         </div>
                     </div>
                     <span class="status-badge status-${report.status}">${report.status.toUpperCase()}</span>
@@ -1464,7 +1653,7 @@
             } else {
                 list.innerHTML = allReports.map(report => `
                     <div class="report-card" style="display: flex; gap: 1rem; align-items: center;">
-                        ${report.image ? `<img src="${report.image}" alt="Pothole" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #e0e0e0; flex-shrink: 0;">` : ''}
+                        ${report.image ? `<img src="${report.image}" alt="Pothole" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #e0e0e0; flex-shrink: 0; cursor: pointer; transition: transform 0.2s;" onclick="openImageModal(this.src)" title="Click to enlarge photo">` : ''}
                         <div class="report-info" style="flex: 1;">
                             <h3>Report #${report.id}</h3>
                             <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">${report.address}</p>
@@ -1478,6 +1667,10 @@
                                 <div class="meta-item">
                                     <strong>Reported by:</strong> ${report.email}
                                 </div>
+                                ${report.lat && report.lon ? `
+                                <div class="meta-item">
+                                    <strong>Map:</strong> <a href="https://www.google.com/maps?q=${report.lat},${report.lon}" target="_blank" rel="noopener noreferrer" style="color: #185fa5; text-decoration: none;"><i class="fas fa-location-dot"></i> ${Number(report.lat).toFixed(4)}, ${Number(report.lon).toFixed(4)}</a>
+                                </div>` : ''}
                             </div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
@@ -1520,7 +1713,7 @@
             const report = allReports.find(r => r.id === reportId);
             if (report) {
                 report.status = newStatus;
-                localStorage.setItem('potholeReports', JSON.stringify(allReports));
+                safeStorage.setItem('potholeReports', JSON.stringify(allReports));
                 loadAdminReports();
             }
         }
@@ -1536,8 +1729,551 @@
             // Filter logic can be added here
         }
 
+        // Image upload handlers
+        function openFilePicker(event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            const fileInput = document.getElementById('potholeImageInput');
+            if (!fileInput) return;
+            // Clear value so selecting the same file again triggers onchange
+            fileInput.value = '';
+            try {
+                if (typeof fileInput.showPicker === 'function') {
+                    fileInput.showPicker();
+                    return;
+                }
+            } catch (err) {
+                // Fallback to click if showPicker is blocked by security context
+            }
+            fileInput.click();
+        }
+
+        function handleImageSelect(event) {
+            const file = event.target.files && event.target.files[0];
+            if (file) {
+                processSelectedImage(file);
+            }
+        }
+
+        function processSelectedImage(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file (e.g., JPG, PNG, WEBP).');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onerror = function() {
+                alert('Failed to read the selected file. Please try again.');
+            };
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onerror = function() {
+                    alert('Failed to load image preview. Please choose another image.');
+                };
+                img.onload = function() {
+                    // Compress / constrain size so reports stay lightweight in localStorage
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const maxDim = 1000;
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+                    currentImageData = compressedDataUrl;
+                    document.getElementById('imagePreview').src = compressedDataUrl;
+                    document.getElementById('imageFileName').textContent = file.name;
+                    document.getElementById('imageFileSize').textContent = (file.size / 1024 < 1024)
+                        ? `${(file.size / 1024).toFixed(1)} KB`
+                        : `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+
+                    document.getElementById('imageUploadArea').style.display = 'none';
+                    document.getElementById('imagePreviewContainer').style.display = 'block';
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage() {
+            currentImageData = null;
+            const fileInput = document.getElementById('potholeImageInput');
+            if (fileInput) fileInput.value = '';
+            const preview = document.getElementById('imagePreview');
+            if (preview) preview.src = '';
+            const container = document.getElementById('imagePreviewContainer');
+            if (container) container.style.display = 'none';
+            const uploadArea = document.getElementById('imageUploadArea');
+            if (uploadArea) uploadArea.style.display = 'block';
+        }
+
+        function initImageUploadListeners() {
+            const uploadArea = document.getElementById('imageUploadArea');
+            if (!uploadArea) return;
+
+            uploadArea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openFilePicker(e);
+                }
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    uploadArea.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    uploadArea.classList.remove('dragover');
+                }, false);
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files.length > 0) {
+                    processSelectedImage(files[0]);
+                }
+            }, false);
+        }
+
+        function openImageModal(imgSrc) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            if (modal && modalImg) {
+                modalImg.src = imgSrc;
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // ==========================================
+        // MAP ENGINE & GOOGLE MAPS API INTEGRATION
+        // ==========================================
+        // You can paste your Google Maps API Key directly here or enter it via the UI:
+        const DEFAULT_GOOGLE_MAPS_KEY = '';
+
+        let activeMapProvider = 'none'; // 'google' | 'leaflet'
+        let googleMap = null;
+        let googleMarker = null;
+        let leafletMap = null;
+        let leafletMarker = null;
+        let mapInitialized = false;
+
+        // Default initial coordinates: Mumbai (19.0760, 72.8777)
+        let currentCoords = { lat: 19.0760, lng: 72.8777 };
+
+        function getGoogleMapsKey() {
+            return safeStorage.getItem('googleMapsApiKey') 
+                || (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG.GOOGLE_MAPS_API_KEY)
+                || DEFAULT_GOOGLE_MAPS_KEY;
+        }
+
+        function initMapEngine() {
+            const apiKey = getGoogleMapsKey();
+            if (apiKey && apiKey.trim().length > 0) {
+                loadGoogleMaps(apiKey.trim());
+            } else {
+                initLeafletMap();
+            }
+        }
+
+        function loadGoogleMaps(apiKey) {
+            updateMapProviderBadge('google', 'Loading Google Maps...');
+            if (window.google && window.google.maps) {
+                initGoogleMap();
+                return;
+            }
+
+            const existingScript = document.getElementById('googleMapsScript');
+            if (existingScript) existingScript.remove();
+
+            window._onGoogleMapsLoaded = function() {
+                initGoogleMap();
+            };
+
+            window.gm_authFailure = function() {
+                console.warn('Google Maps authentication failed. Falling back to OpenStreetMap.');
+                alert('Google Maps Authentication Notice: The API key entered was not accepted by Google. Falling back to OpenStreetMap.');
+                initLeafletMap();
+            };
+
+            const script = document.createElement('script');
+            script.id = 'googleMapsScript';
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places,geometry&callback=_onGoogleMapsLoaded`;
+            script.async = true;
+            script.defer = true;
+            script.onerror = function() {
+                console.warn('Could not load Google Maps script. Falling back to OpenStreetMap.');
+                initLeafletMap();
+            };
+            document.head.appendChild(script);
+        }
+
+        function initGoogleMap() {
+            const container = document.getElementById('potholeMap');
+            if (!container) return;
+
+            if (leafletMap) {
+                try { leafletMap.remove(); } catch(e) {}
+                leafletMap = null;
+                leafletMarker = null;
+            }
+            container.innerHTML = '';
+
+            try {
+                activeMapProvider = 'google';
+                updateMapProviderBadge('google', 'Google Maps Active');
+
+                const lat = parseFloat(document.getElementById('latitude').value) || currentCoords.lat;
+                const lng = parseFloat(document.getElementById('longitude').value) || currentCoords.lng;
+                currentCoords = { lat, lng };
+
+                googleMap = new google.maps.Map(container, {
+                    center: currentCoords,
+                    zoom: 15,
+                    mapTypeId: 'roadmap',
+                    mapTypeControl: true,
+                    fullscreenControl: true,
+                    streetViewControl: false,
+                    zoomControl: true
+                });
+
+                googleMarker = new google.maps.Marker({
+                    position: currentCoords,
+                    map: googleMap,
+                    draggable: true,
+                    animation: google.maps.Animation.DROP,
+                    title: "Pothole Location"
+                });
+
+                // Click on map to place pin and automatically fetch address
+                googleMap.addListener('click', (e) => {
+                    const newLat = e.latLng.lat();
+                    const newLng = e.latLng.lng();
+                    googleMarker.setPosition(e.latLng);
+                    onLocationSelected(newLat, newLng, 'google');
+                });
+
+                // Drag marker to update pin and automatically fetch address
+                googleMarker.addListener('dragend', (e) => {
+                    const newLat = e.latLng.lat();
+                    const newLng = e.latLng.lng();
+                    onLocationSelected(newLat, newLng, 'google');
+                });
+
+                mapInitialized = true;
+            } catch(err) {
+                console.error('Error initializing Google Maps:', err);
+                initLeafletMap();
+            }
+        }
+
+        function initLeafletMap() {
+            const container = document.getElementById('potholeMap');
+            if (!container) return;
+
+            if (leafletMap) {
+                try { leafletMap.remove(); } catch(e) {}
+                leafletMap = null;
+                leafletMarker = null;
+            }
+            container.innerHTML = '';
+
+            activeMapProvider = 'leaflet';
+            updateMapProviderBadge('leaflet', 'OpenStreetMap Active');
+
+            const lat = parseFloat(document.getElementById('latitude').value) || currentCoords.lat;
+            const lng = parseFloat(document.getElementById('longitude').value) || currentCoords.lng;
+            currentCoords = { lat, lng };
+
+            if (typeof L === 'undefined') {
+                container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">Map library loading...</div>';
+                return;
+            }
+
+            leafletMap = L.map(container).setView([lat, lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+                maxZoom: 19
+            }).addTo(leafletMap);
+
+            leafletMarker = L.marker([lat, lng], { draggable: true }).addTo(leafletMap);
+
+            // Click anywhere on map to position pin & auto-resolve address
+            leafletMap.on('click', function(e) {
+                leafletMarker.setLatLng(e.latlng);
+                onLocationSelected(e.latlng.lat, e.latlng.lng, 'leaflet');
+            });
+
+            // Drag marker to position pin & auto-resolve address
+            leafletMarker.on('dragend', function() {
+                const pos = leafletMarker.getLatLng();
+                onLocationSelected(pos.lat, pos.lng, 'leaflet');
+            });
+
+            mapInitialized = true;
+        }
+
+        function onLocationSelected(lat, lng, provider) {
+            currentCoords = { lat, lng };
+
+            const latInput = document.getElementById('latitude');
+            const lngInput = document.getElementById('longitude');
+            if (latInput) latInput.value = lat.toFixed(6);
+            if (lngInput) lngInput.value = lng.toFixed(6);
+
+            reverseGeocodeLocation(lat, lng, provider);
+        }
+
+        function reverseGeocodeLocation(lat, lng, provider) {
+            const addressInput = document.getElementById('address');
+            const spinner = document.getElementById('addressSpinner');
+            const badge = document.getElementById('geocodeStatusBadge');
+
+            if (!addressInput) return;
+
+            addressInput.value = 'Fetching address...';
+            if (spinner) spinner.style.display = 'block';
+            if (badge) badge.style.display = 'none';
+
+            // Use Google Geocoder if active
+            if (provider === 'google' && window.google && window.google.maps) {
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                    if (spinner) spinner.style.display = 'none';
+                    if (status === 'OK' && results && results[0]) {
+                        addressInput.value = results[0].formatted_address;
+                        showGeocodeSuccess();
+                    } else {
+                        console.warn('Google Geocode returned status:', status);
+                        fallbackToNominatim(lat, lng);
+                    }
+                });
+                return;
+            }
+
+            // Fallback to OpenStreetMap Nominatim reverse geocoding
+            fallbackToNominatim(lat, lng);
+        }
+
+        function fallbackToNominatim(lat, lng) {
+            const addressInput = document.getElementById('address');
+            const spinner = document.getElementById('addressSpinner');
+
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
+                headers: { 'Accept-Language': 'en' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (spinner) spinner.style.display = 'none';
+                if (data && data.display_name) {
+                    addressInput.value = data.display_name;
+                    showGeocodeSuccess();
+                } else {
+                    addressInput.value = `Location at ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                }
+            })
+            .catch(err => {
+                console.warn('Nominatim reverse geocode error:', err);
+                if (spinner) spinner.style.display = 'none';
+                addressInput.value = `Location at ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            });
+        }
+
+        function showGeocodeSuccess() {
+            const badge = document.getElementById('geocodeStatusBadge');
+            if (badge) {
+                badge.style.display = 'inline-flex';
+                setTimeout(() => {
+                    badge.style.display = 'none';
+                }, 4000);
+            }
+        }
+
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser.');
+                return;
+            }
+
+            const btn = document.getElementById('locateMeBtn');
+            const origHtml = btn ? btn.innerHTML : '';
+            if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting GPS...';
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    if (btn) btn.innerHTML = origHtml;
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    currentCoords = { lat, lng };
+
+                    if (activeMapProvider === 'google' && googleMap && googleMarker) {
+                        const latLng = new google.maps.LatLng(lat, lng);
+                        googleMap.panTo(latLng);
+                        googleMap.setZoom(16);
+                        googleMarker.setPosition(latLng);
+                        onLocationSelected(lat, lng, 'google');
+                    } else if (activeMapProvider === 'leaflet' && leafletMap && leafletMarker) {
+                        leafletMap.setView([lat, lng], 16);
+                        leafletMarker.setLatLng([lat, lng]);
+                        onLocationSelected(lat, lng, 'leaflet');
+                    } else {
+                        onLocationSelected(lat, lng, activeMapProvider);
+                    }
+                },
+                (err) => {
+                    if (btn) btn.innerHTML = origHtml;
+                    alert('Could not determine current location. Please click directly on the map instead.');
+                    console.warn('Geolocation error:', err.message);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        function handleManualCoordinateChange() {
+            const lat = parseFloat(document.getElementById('latitude').value);
+            const lng = parseFloat(document.getElementById('longitude').value);
+            if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                currentCoords = { lat, lng };
+                if (activeMapProvider === 'google' && googleMap && googleMarker) {
+                    const latLng = new google.maps.LatLng(lat, lng);
+                    googleMap.panTo(latLng);
+                    googleMarker.setPosition(latLng);
+                } else if (activeMapProvider === 'leaflet' && leafletMap && leafletMarker) {
+                    leafletMap.setView([lat, lng]);
+                    leafletMarker.setLatLng([lat, lng]);
+                }
+                reverseGeocodeLocation(lat, lng, activeMapProvider);
+            }
+        }
+
+        function updateMapProviderBadge(provider, text) {
+            const badge = document.getElementById('mapProviderBadge');
+            const btnLabel = document.getElementById('mapKeyBtnLabel');
+            if (provider === 'google') {
+                if (badge) {
+                    badge.textContent = 'Google Maps Active';
+                    badge.style.background = '#e8f0fe';
+                    badge.style.color = '#1a73e8';
+                    badge.style.borderColor = '#aecbfa';
+                }
+                if (btnLabel) btnLabel.textContent = 'Google Maps Config';
+            } else {
+                if (badge) {
+                    badge.innerHTML = '<i class="fas fa-circle-check"></i> OpenStreetMap (100% Free - No Card Needed)';
+                    badge.style.background = '#eaf3de';
+                    badge.style.color = '#3b6d11';
+                    badge.style.borderColor = '#c5e1a5';
+                }
+                if (btnLabel) btnLabel.textContent = 'Map Settings';
+            }
+        }
+
+        function openMapConfigModal() {
+            const modal = document.getElementById('apiKeyModal');
+            const input = document.getElementById('googleMapsKeyInput');
+            if (input) input.value = getGoogleMapsKey();
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeMapConfigModal() {
+            const modal = document.getElementById('apiKeyModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function saveGoogleMapsKey() {
+            const input = document.getElementById('googleMapsKeyInput');
+            const key = input ? input.value.trim() : '';
+            if (key) {
+                safeStorage.setItem('googleMapsApiKey', key);
+                closeMapConfigModal();
+                loadGoogleMaps(key);
+            } else {
+                clearGoogleMapsKey();
+            }
+        }
+
+        function clearGoogleMapsKey() {
+            safeStorage.removeItem('googleMapsApiKey');
+            const input = document.getElementById('googleMapsKeyInput');
+            if (input) input.value = '';
+            closeMapConfigModal();
+            initLeafletMap();
+        }
+
         // Initialize
+        initImageUploadListeners();
         checkAuthStatus();
+        initMapEngine();
     </script>
+
+    <!-- Image preview modal -->
+    <div id="imageModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 1.5rem;" onclick="closeImageModal()">
+        <div style="position: relative; max-width: 90%; max-height: 90%; display: flex; align-items: center; justify-content: center;" onclick="event.stopPropagation()">
+            <button onclick="closeImageModal()" style="position: absolute; top: -14px; right: -14px; background: white; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 2001;">&times;</button>
+            <img id="modalImage" src="" alt="Enlarged Pothole" style="max-width: 100%; max-height: 85vh; border-radius: 8px; object-fit: contain; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+        </div>
+    </div>
+
+    <!-- Map Provider / API Key Modal -->
+    <div id="apiKeyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; padding: 1.5rem;" onclick="closeMapConfigModal()">
+        <div style="background: white; border-radius: 12px; max-width: 540px; width: 100%; padding: 2rem; box-shadow: 0 8px 32px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 0.6rem; font-size: 1.25rem;">
+                    <i class="fas fa-map-location-dot" style="color: #d85a30;"></i> Map Provider Settings
+                </h3>
+                <button onclick="closeMapConfigModal()" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #888; line-height: 1;">&times;</button>
+            </div>
+            
+            <div style="background: #eaf3de; border: 1px solid #c5e1a5; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                <h4 style="margin: 0 0 0.35rem 0; color: #2e590d; display: flex; align-items: center; gap: 0.4rem; font-size: 0.95rem;">
+                    <i class="fas fa-check-circle"></i> Active: OpenStreetMap (100% Free Forever)
+                </h4>
+                <p style="margin: 0; font-size: 0.85rem; color: #3b6d11; line-height: 1.4;">
+                    No credit card, payment, or Google Cloud account needed! Point-and-click pothole pinning and automatic street address geocoding work completely out of the box.
+                </p>
+            </div>
+
+            <p style="font-size: 0.88rem; color: #555; margin-bottom: 0.75rem; line-height: 1.4;">
+                <strong>Optional:</strong> If your organization has an active Google Cloud Billing account and you want to use official Google Maps instead, paste your key below:
+            </p>
+
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">Google Maps API Key (Optional)</label>
+                <input type="text" id="googleMapsKeyInput" placeholder="AIzaSy... (Leave empty for Free OpenStreetMap)" style="font-family: monospace; font-size: 0.9rem; padding: 0.75rem; border: 1px solid #ccc; border-radius: 6px; width: 100%;">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
+                <button type="button" class="btn" onclick="clearGoogleMapsKey()" style="color: #2e590d; border-color: #c5e1a5; background: #f4fbf0;">
+                    <i class="fas fa-check"></i> Use Free OpenStreetMap
+                </button>
+                <button type="button" class="btn" onclick="closeMapConfigModal()">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveGoogleMapsKey()">Save Google Key</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
