@@ -1698,9 +1698,10 @@
         }
 
         function loadCitizenReports() {
-            switchPage('citizen-reports');
             const list = document.getElementById('citizenReportsList');
-            const myReports = allReports.filter(r => r.email === currentUser.email);
+            if (!list) return;
+            const userEmail = (currentUser && currentUser.email) ? currentUser.email.toLowerCase().trim() : '';
+            const myReports = allReports.filter(r => r.email && r.email.toLowerCase().trim() === userEmail);
             if (myReports.length === 0) {
                 list.innerHTML = `
                     <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary, #666);">
