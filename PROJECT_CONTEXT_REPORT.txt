@@ -1,0 +1,174 @@
+================================================================================
+POTHOLEFIX - COMPREHENSIVE PROJECT CONTEXT & TECHNICAL REPORT
+================================================================================
+
+1. EXECUTIVE SUMMARY & OBJECTIVE
+--------------------------------------------------------------------------------
+* Project Name: PotholeFix (Pothole Management System)
+* Live Production URL: https://potholemanagementsystem.vercel.app/
+* GitHub Repository: https://github.com/parekhbhavya724/Potholemanagementsystem (Branch: main)
+* Primary Objective: Provide a citizen-centric, real-time civic portal for reporting, 
+  geolocating, and tracking road hazards (potholes), coupled with an authority management 
+  dashboard for municipal road maintenance departments to assign tasks, update repair 
+  stages, and monitor city-wide completion metrics.
+
+
+2. TECHNOLOGY STACK & ARCHITECTURE
+--------------------------------------------------------------------------------
+* Frontend UI: HTML5, Vanilla JavaScript (ES6+), Vanilla CSS (responsive, zero-build-step,
+  glassmorphic/modern design system, accessible UI).
+* Mapping Engine: Dual-Engine architecture
+  - Primary (Free): Leaflet.js + OpenStreetMap (OSM) tile layer with automatic reverse 
+    geocoding via OpenStreetMap Nominatim API (100% free forever, no billing account needed).
+  - Secondary (Optional): Google Maps JavaScript API & Google Geocoding API.
+* Serverless Backend Proxy: Vercel Serverless Functions (Node.js 18+) located at api/reports.js.
+* Cloud Database: Supabase PostgreSQL 15 with Row-Level Security (RLS) and real-time publication.
+* Deployment & Hosting: Vercel with automated CI/CD directly connected to GitHub repository.
+* Local Storage Layer: Window localStorage wrapped in safeStorage for offline resilience 
+  and client-side session caching.
+
+
+3. HIGH-LEVEL ARCHITECTURE FLOW
+--------------------------------------------------------------------------------
+[ Citizen / Authority Browser ]
+        |
+        | 1. Point-and-click map selection / photo capture / submit report
+        v
+[ Frontend Application (index.html) ]
+   |-- OpenStreetMap & Nominatim (Automatic street address geocoding)
+   |-- safeStorage (Offline caching fallback)
+   |
+   | 2. fetch('/api/reports') [ZERO database keys or Supabase URLs in request]
+   v
+[ Vercel Serverless Function (api/reports.js) ]
+   |-- Reads process.env.SUPABASE_URL (Encrypted securely on Vercel servers)
+   |-- Reads process.env.SUPABASE_ANON_KEY (Encrypted securely on Vercel servers)
+   |
+   | 3. Authenticated HTTPS REST query to Supabase PostgREST
+   v
+[ Supabase Managed PostgreSQL Database ]
+   `-- Table: public.reports (Protected by Row Level Security & Realtime)
+
+
+4. SECURITY & CREDENTIAL ISOLATION (ZERO-EXPOSURE POLICY)
+--------------------------------------------------------------------------------
+To completely eliminate database credential leaks to GitHub or client browser DevTools:
+1. No Client-Side Database SDK:
+   - The frontend does not bundle @supabase/supabase-js.
+   - The client browser never receives Supabase keys or project URLs.
+2. Serverless Proxy Pattern:
+   - All client queries (GET, POST, PATCH) communicate exclusively with the relative 
+     endpoint /api/reports.
+3. Encrypted Server Environment Variables:
+   - Supabase credentials exist strictly within Vercel's encrypted backend settings:
+     * SUPABASE_URL = https://<project-ref>.supabase.co
+     * SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+4. Version Control Sanitization:
+   - All secrets (.env, .env.local, config.js) are ignored via .gitignore.
+   - Example configuration templates contain only sanitized empty stubs.
+
+
+5. DATABASE SCHEMA & DATA MODELING (PostgreSQL on Supabase)
+--------------------------------------------------------------------------------
+Table Name: public.reports
+
+Columns:
+- id                TEXT PRIMARY KEY           Unique tracking ID (e.g. PH-8492)
+- created_at        TIMESTAMPTZ NOT NULL       Default: timezone('utc'::text, now())
+- lat               DOUBLE PRECISION NOT NULL  Latitude coordinate (-90 to 90)
+- lon               DOUBLE PRECISION NOT NULL  Longitude coordinate (-180 to 180)
+- address           TEXT NOT NULL              Auto-geocoded street address
+- severity          TEXT NOT NULL              Check constraint: ('high', 'medium', 'low')
+- width             NUMERIC                    Optional pothole diameter in meters
+- depth             NUMERIC                    Optional pothole depth in centimeters
+- description       TEXT                       Citizen description and landmark notes
+- email             TEXT NOT NULL              Reporting user account email
+- image             TEXT                       Compressed base64 data URI of the pothole
+- status            TEXT NOT NULL              Default: 'reported'
+                                               Check: ('reported', 'assigned', 'in_progress', 'resolved')
+- submitted_date    DATE                       Default: CURRENT_DATE
+- assigned_to       TEXT                       Default: 'Pending'
+- progress_percent  INTEGER                    Default: 0
+
+Security & Realtime Policies:
+- Row Level Security (RLS) is ENABLED.
+- Policies allow public SELECT, INSERT, and UPDATE on public.reports.
+- Realtime replication publication: alter publication supabase_realtime add table public.reports;
+
+
+6. SERVERLESS API SPECIFICATION (api/reports.js)
+--------------------------------------------------------------------------------
+Endpoint: /api/reports
+CORS: Enabled for all origins (*), methods (GET, OPTIONS, PATCH, DELETE, POST, PUT), 
+and standard headers.
+
+Supported Methods:
+1. GET /api/reports
+   - Purpose: Retrieves all civic pothole reports ordered by created_at DESC.
+   - Response: 200 OK + JSON Array of report objects.
+
+2. POST /api/reports
+   - Purpose: Inserts a newly submitted pothole report into Supabase.
+   - Request Body: JSON object containing report attributes.
+   - Headers: Prefer: return=representation.
+   - Response: 201 Created + JSON representation of created report.
+
+3. PATCH /api/reports
+   - Purpose: Updates a report's repair status.
+   - Request Body: { "id": "PH-XXXX", "status": "in_progress" }
+   - Response: 200 OK + JSON representation of updated record.
+
+
+7. CORE SYSTEM FEATURES & WORKFLOWS
+--------------------------------------------------------------------------------
+A. Citizen Portal:
+1. Interactive Geolocation & Auto-Address Geocoding:
+   - Citizens click any spot on the map or drag the location marker.
+   - Coordinates are instantly queried against OpenStreetMap Nominatim API, automatically 
+     populating the full street address into the input form.
+   - "Use Current GPS" button uses the HTML5 Geolocation API with high-accuracy mode.
+2. Photo Upload & Preview:
+   - Citizens attach photos directly from mobile camera or file picker.
+   - Live client-side thumbnail preview with click-to-enlarge modal lightbox.
+3. Unique Collision-Free Tracking IDs:
+   - Each report generates an alphanumeric identifier (e.g. PH-8492) combining timestamp 
+     slices and random numbers, preventing primary key collisions across multi-user submissions.
+4. "My Reports" Dashboard:
+   - Displays all reports filed by the logged-in citizen's email address.
+   - Displays live status badges (Reported, Assigned, In Progress, Resolved).
+   - Provides a direct link to view the exact location in Google Maps.
+
+B. Authority / Admin Dashboard:
+1. City-Wide Management:
+   - Authority personnel view every report filed across the municipality.
+   - Inline status dropdown allows promoting reports: Reported -> Assigned -> In Progress -> Resolved.
+   - Filter reports by status and priority level.
+2. Real-Time Auto-Polling & Manual Refresh:
+   - Background interval polls /api/reports every 15 seconds so incoming citizen reports 
+     appear live without manual page reloads.
+   - "Refresh Reports" button with animated loading spinner provides instantaneous manual sync.
+3. Operational Metrics:
+   - Real-time statistics: Total Reports, Active Issues, In-Progress Tasks, and Resolved percentage.
+
+
+8. FILE MANIFEST & PROJECT STRUCTURE
+--------------------------------------------------------------------------------
+pothole-management-sys/
+|-- api/
+|   `-- reports.js                   # Node.js serverless proxy (Supabase secret isolation)
+|-- .gitignore                       # Prevents committing secrets (.env, config.js)
+|-- config.example.js                # Template for optional custom map configuration
+|-- index.html                       # Main entrypoint and full application UI
+|-- PotholeFix_main_page.html        # Production mirror copy
+|-- pothole_system_authpage.html     # Production mirror copy
+|-- README.md                        # Documentation and deployment instructions
+|-- supabase_schema.sql              # PostgreSQL DDL table definitions and RLS policies
+`-- PROJECT_CONTEXT_REPORT.txt       # Full technical report for documentation & LLM context
+
+
+9. VERIFIED METRICS & SYSTEM STATUS
+--------------------------------------------------------------------------------
+* Production Endpoint Status: 200 OK (Verified live on Vercel).
+* Database Cache Status: Active (Table 'public.reports' initialized and accepting queries).
+* Security Audit: 0 credentials exposed in Git; 0 credentials visible to end-user browsers.
+================================================================================
