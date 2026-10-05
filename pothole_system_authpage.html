@@ -1299,10 +1299,13 @@
                     }
                 } else if (manualTrigger) {
                     const err = await response.json().catch(() => ({}));
-                    if (response.status === 500 && err.error?.includes('missing in Vercel')) {
+                    const msg = err.message || err.error || response.statusText || 'Unknown error';
+                    if (response.status === 404 && (msg.includes('public.reports') || err.code === 'PGRST205')) {
+                        alert("Database Setup Needed: The 'reports' table does not exist in Supabase yet. Please run 'supabase_schema.sql' in your Supabase SQL Editor!");
+                    } else if (response.status === 500 && msg.includes('missing in Vercel')) {
                         alert('Backend Notice: SUPABASE_URL or SUPABASE_ANON_KEY is not set in Vercel Environment Variables. Please add them in Vercel Project Settings.');
                     } else {
-                        alert('Cloud sync returned status ' + response.status + ': ' + (err.error || response.statusText));
+                        alert(`Cloud sync returned status ${response.status}: ${msg}`);
                     }
                 }
             } catch (err) {
