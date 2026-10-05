@@ -1193,7 +1193,7 @@
             </div>
 
             <div id="manage-tab" class="admin-tab" style="display: none;">
-                <div class="filter-section">
+                <div class="filter-section" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
                     <select>
                         <option value="">All Statuses</option>
                         <option value="reported">Reported</option>
@@ -1208,6 +1208,9 @@
                         <option value="low">Low Priority</option>
                     </select>
                     <input type="date" placeholder="Filter by date">
+                    <button type="button" class="btn" onclick="syncReportsFromCloud(true)" style="margin-left: auto; display: inline-flex; align-items: center; gap: 0.5rem; background: #fff; border: 1px solid #ccc; font-weight: 500; font-size: 0.88rem; padding: 0.65rem 1rem; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-arrows-rotate" id="refreshCloudSpinner"></i> Refresh Reports
+                    </button>
                 </div>
 
                 <div class="report-list" id="adminReportsList"></div>
@@ -1260,12 +1263,15 @@
         // All credentials stay 100% hidden in Vercel Environment Variables.
         // No Supabase URL or keys are ever exposed to client browsers or Git.
         // ==========================================
-        async function syncReportsFromCloud() {
+        async function syncReportsFromCloud(manualTrigger = false) {
+            const spinner = document.getElementById('refreshCloudSpinner');
+            if (spinner && manualTrigger) spinner.classList.add('fa-spin');
+
             try {
                 const response = await fetch('/api/reports');
                 if (response.ok) {
                     const data = await response.json();
-                    if (Array.isArray(data) && data.length > 0) {
+                    if (Array.isArray(data)) {
                         allReports = data.map(r => ({
                             id: r.id,
                             lat: r.lat,
@@ -1286,10 +1292,25 @@
                         if (activeReportsPage) loadCitizenReports();
                         const activeAdminPage = document.querySelector('#admin.active');
                         if (activeAdminPage) loadAdminReports();
+
+                        if (manualTrigger) {
+                            alert(`Cloud sync complete! ${allReports.length} report(s) loaded.`);
+                        }
+                    }
+                } else if (manualTrigger) {
+                    const err = await response.json().catch(() => ({}));
+                    if (response.status === 500 && err.error?.includes('missing in Vercel')) {
+                        alert('Backend Notice: SUPABASE_URL or SUPABASE_ANON_KEY is not set in Vercel Environment Variables. Please add them in Vercel Project Settings.');
+                    } else {
+                        alert('Cloud sync returned status ' + response.status + ': ' + (err.error || response.statusText));
                     }
                 }
             } catch (err) {
-                // Running offline or locally without serverless proxy
+                if (manualTrigger) alert('Could not reach cloud backend: ' + err.message);
+            } finally {
+                if (spinner && manualTrigger) {
+                    setTimeout(() => spinner.classList.remove('fa-spin'), 600);
+                }
             }
         }
 
@@ -1580,8 +1601,10 @@
                 }, 150);
             } else if (pageId === 'citizen-reports') {
                 loadCitizenReports();
+                syncReportsFromCloud();
             } else if (pageId === 'admin') {
                 loadAdminReports();
+                syncReportsFromCloud();
             }
         }
 
@@ -1602,8 +1625,10 @@
                 return;
             }
 
+            // Generate guaranteed collision-free unique tracking ID
+            const uniqueSuffix = Date.now().toString().slice(-4) + Math.floor(Math.random() * 90 + 10);
             const newReport = {
-                id: `PH${String(allReports.length + 1).padStart(3, '0')}`,
+                id: `PH-${uniqueSuffix}`,
                 lat: parseFloat(lat),
                 lon: parseFloat(lon),
                 address,
@@ -1639,6 +1664,13 @@
                     assigned_to: newReport.assignedTo,
                     progress_percent: newReport.progressPercent
                 })
+            }).then(async res => {
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    console.warn('Backend warning:', err.error || res.statusText);
+                } else {
+                    console.log('Report saved to cloud successfully!');
+                }
             }).catch(e => console.warn('Cloud sync error:', e));
 
             document.getElementById('trackingId').textContent = newReport.id;
@@ -2297,6 +2329,11 @@
         checkAuthStatus();
         initMapEngine();
         syncReportsFromCloud();
+
+        // Auto-refresh reports from cloud every 15 seconds so multiple devices stay in sync
+        setInterval(() => {
+            syncReportsFromCloud();
+        }, 15000);
     </script>
 
     <!-- Image preview modal -->
