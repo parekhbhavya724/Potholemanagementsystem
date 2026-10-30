@@ -39,5 +39,8 @@ create policy "Allow insert of reports" on public.reports
 create policy "Allow update of reports" on public.reports
     for update using (true);
 
+create policy "Allow delete of reports" on public.reports
+    for delete using (true);
+
 -- 4. Enable Realtime Sync
 alter publication supabase_realtime add table public.reports;

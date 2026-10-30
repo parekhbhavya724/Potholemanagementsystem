@@ -93,6 +93,51 @@ module.exports = async function handler(req, res) {
             return res.status(response.status).json(data);
         }
 
+        // DELETE: Delete a specific report by id or all reports
+        if (req.method === 'DELETE') {
+            let id = null;
+            let all = false;
+
+            try {
+                const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+                if (parsedUrl.searchParams.get('id')) id = parsedUrl.searchParams.get('id');
+                if (parsedUrl.searchParams.get('all') === 'true') all = true;
+            } catch (e) {}
+
+            const body = await getRequestBody(req);
+            if (body && body.id) id = body.id;
+            if (body && body.all === true) all = true;
+
+            let targetUrl = '';
+            if (id) {
+                targetUrl = `${supabaseUrl}/rest/v1/reports?id=eq.${encodeURIComponent(id)}`;
+            } else if (all) {
+                // PostgREST requires a filter to delete records
+                targetUrl = `${supabaseUrl}/rest/v1/reports?id=not.is.null`;
+            } else {
+                return res.status(400).json({ error: 'Missing report id or all flag for deletion' });
+            }
+
+            const response = await fetch(targetUrl, {
+                method: 'DELETE',
+                headers: {
+                    ...headers,
+                    'Prefer': 'return=representation'
+                }
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                return res.status(response.status).json({
+                    error: errData.message || errData.hint || 'Failed to delete report(s) from database',
+                    details: errData
+                });
+            }
+
+            const data = await response.json().catch(() => []);
+            return res.status(200).json({ success: true, count: Array.isArray(data) ? data.length : 0, deleted: data });
+        }
+
         return res.status(405).json({ error: 'Method not allowed' });
     } catch (error) {
         console.error('Serverless API error:', error);

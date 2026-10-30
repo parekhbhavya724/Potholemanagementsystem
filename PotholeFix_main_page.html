@@ -636,22 +636,38 @@
         }
 
         .report-meta {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-            font-size: 0.9rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem 1.6rem;
+            align-items: center;
+            margin-top: 0.85rem;
+            font-size: 0.88rem;
         }
 
         .meta-item {
-            display: flex;
-            gap: 0.5rem;
+            display: inline-flex;
+            gap: 0.45rem;
             align-items: center;
             color: var(--text-secondary, #666);
+            white-space: nowrap;
+        }
+
+        .meta-item.meta-email {
+            white-space: normal;
+            word-break: break-all;
         }
 
         .meta-item strong {
             color: var(--text-primary, #333);
+            font-weight: 600;
+        }
+
+        .meta-item a {
+            transition: color 0.2s ease;
+        }
+
+        .meta-item a:hover {
+            text-decoration: underline !important;
         }
 
         .status-badge {
@@ -1222,9 +1238,14 @@
                         <option value="low">Low Priority</option>
                     </select>
                     <input type="date" placeholder="Filter by date">
-                    <button type="button" class="btn" onclick="syncReportsFromCloud(true)" style="margin-left: auto; display: inline-flex; align-items: center; gap: 0.5rem; background: #fff; border: 1px solid #ccc; font-weight: 500; font-size: 0.88rem; padding: 0.65rem 1rem; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-arrows-rotate" id="refreshCloudSpinner"></i> Refresh Reports
-                    </button>
+                    <div style="margin-left: auto; display: inline-flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn" onclick="syncReportsFromCloud(true)" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #fff; border: 1px solid #ccc; font-weight: 500; font-size: 0.88rem; padding: 0.65rem 1rem; border-radius: 6px; cursor: pointer;" title="Refresh reports from cloud">
+                            <i class="fas fa-arrows-rotate" id="refreshCloudSpinner"></i> Refresh Reports
+                        </button>
+                        <button type="button" class="btn" onclick="deleteAllReports()" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-weight: 600; font-size: 0.88rem; padding: 0.65rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'" title="Permanently delete all reports from cloud and local storage">
+                            <i class="fas fa-trash-can"></i> Delete All Reports
+                        </button>
+                    </div>
                 </div>
 
                 <div class="report-list" id="adminReportsList"></div>
@@ -1897,14 +1918,14 @@
                         <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">${report.address}</p>
                         <div class="report-meta">
                             <div class="meta-item">
-                                <strong>Severity:</strong> ${report.severity.toUpperCase()}
+                                <strong>Severity:</strong> <span style="font-weight: 600; color: ${report.severity === 'high' ? '#e24b4a' : (report.severity === 'medium' ? '#d97706' : '#10b981')}">${report.severity.toUpperCase()}</span>
                             </div>
                             <div class="meta-item">
-                                <strong>Submitted:</strong> ${report.submittedDate}
+                                <strong>Submitted:</strong> <span>${report.submittedDate}</span>
                             </div>
                             ${report.lat && report.lon ? `
                             <div class="meta-item">
-                                <strong>Map:</strong> <a href="https://www.google.com/maps?q=${report.lat},${report.lon}" target="_blank" rel="noopener noreferrer" style="color: #185fa5; text-decoration: none;"><i class="fas fa-location-dot"></i> ${Number(report.lat).toFixed(4)}, ${Number(report.lon).toFixed(4)}</a>
+                                <strong>Map:</strong> <a href="https://www.google.com/maps?q=${report.lat},${report.lon}" target="_blank" rel="noopener noreferrer" style="color: #185fa5; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-location-dot" style="color: #dc2626;"></i> ${Number(report.lat).toFixed(4)}, ${Number(report.lon).toFixed(4)}</a>
                             </div>` : ''}
                         </div>
                     </div>
@@ -1926,26 +1947,26 @@
                 list.innerHTML = allReports.map(report => `
                     <div class="report-card" style="display: flex; gap: 1rem; align-items: center;">
                         ${report.image ? `<img src="${report.image}" alt="Pothole" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #e0e0e0; flex-shrink: 0; cursor: pointer; transition: transform 0.2s;" onclick="openImageModal(this.src)" title="Click to enlarge photo">` : ''}
-                        <div class="report-info" style="flex: 1;">
+                        <div class="report-info" style="flex: 1; min-width: 0;">
                             <h3>Report #${report.id}</h3>
                             <p style="color: var(--text-secondary, #666); margin: 0.5rem 0;">${report.address}</p>
                             <div class="report-meta">
                                 <div class="meta-item">
-                                    <strong>Severity:</strong> ${report.severity.toUpperCase()}
+                                    <strong>Severity:</strong> <span style="font-weight: 600; color: ${report.severity === 'high' ? '#e24b4a' : (report.severity === 'medium' ? '#d97706' : '#10b981')}">${report.severity.toUpperCase()}</span>
                                 </div>
                                 <div class="meta-item">
-                                    <strong>Submitted:</strong> ${report.submittedDate}
+                                    <strong>Submitted:</strong> <span>${report.submittedDate}</span>
                                 </div>
-                                <div class="meta-item">
-                                    <strong>Reported by:</strong> ${report.email}
+                                <div class="meta-item meta-email" title="${report.email}">
+                                    <strong>Reported by:</strong> <span style="color: #334155;">${report.email}</span>
                                 </div>
                                 ${report.lat && report.lon ? `
                                 <div class="meta-item">
-                                    <strong>Map:</strong> <a href="https://www.google.com/maps?q=${report.lat},${report.lon}" target="_blank" rel="noopener noreferrer" style="color: #185fa5; text-decoration: none;"><i class="fas fa-location-dot"></i> ${Number(report.lat).toFixed(4)}, ${Number(report.lon).toFixed(4)}</a>
+                                    <strong>Map:</strong> <a href="https://www.google.com/maps?q=${report.lat},${report.lon}" target="_blank" rel="noopener noreferrer" style="color: #185fa5; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-location-dot" style="color: #dc2626;"></i> ${Number(report.lat).toFixed(4)}, ${Number(report.lon).toFixed(4)}</a>
                                 </div>` : ''}
                             </div>
                         </div>
-                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; flex-shrink: 0;">
                             <span class="status-badge status-${report.status}">${report.status.toUpperCase()}</span>
                             <select onchange="updateReportStatus('${report.id}', this.value)" style="padding: 0.35rem 0.6rem; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem; background: white; cursor: pointer;">
                                 <option value="reported" ${report.status === 'reported' ? 'selected' : ''}>Reported</option>
@@ -1953,6 +1974,9 @@
                                 <option value="in_progress" ${report.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
                                 <option value="resolved" ${report.status === 'resolved' ? 'selected' : ''}>Resolved</option>
                             </select>
+                            <button type="button" onclick="deleteSingleReport('${report.id}')" style="background: transparent; border: 1px solid #fca5a5; color: #dc2626; font-size: 0.78rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.55rem; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'" title="Delete this report">
+                                <i class="fas fa-trash-can"></i> Delete
+                            </button>
                         </div>
                     </div>
                 `).join('');
@@ -1998,6 +2022,63 @@
                     })
                 }).catch(e => console.warn('Cloud status update error:', e));
             }
+        }
+
+        async function deleteSingleReport(reportId) {
+            if (!confirm(`Are you sure you want to delete report #${reportId}?`)) {
+                return;
+            }
+
+            try {
+                await fetch('/api/reports', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: reportId })
+                });
+            } catch (e) {
+                console.warn('Cloud delete error:', e);
+            }
+
+            allReports = allReports.filter(r => r.id !== reportId);
+            safeStorage.setItem('potholeReports', JSON.stringify(allReports));
+            updateDashboardStats();
+            loadAdminReports();
+            const citizenPage = document.querySelector('#citizen-reports.active');
+            if (citizenPage) loadCitizenReports();
+        }
+
+        async function deleteAllReports() {
+            if (!confirm('⚠️ Are you sure you want to delete ALL pothole reports?\n\nThis will permanently delete all records from both the cloud database and local storage.')) {
+                return;
+            }
+
+            const spinner = document.getElementById('refreshCloudSpinner');
+            if (spinner) spinner.classList.add('fa-spin');
+
+            try {
+                const response = await fetch('/api/reports', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ all: true })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    console.warn('Cloud bulk delete response:', err);
+                }
+            } catch (e) {
+                console.warn('Network error during bulk delete:', e);
+            } finally {
+                if (spinner) spinner.classList.remove('fa-spin');
+            }
+
+            allReports = [];
+            safeStorage.removeItem('potholeReports');
+            updateDashboardStats();
+            loadAdminReports();
+            const citizenPage = document.querySelector('#citizen-reports.active');
+            if (citizenPage) loadCitizenReports();
+            alert('✅ All pothole reports have been deleted.');
         }
 
         function switchAdminTab(tabName) {
