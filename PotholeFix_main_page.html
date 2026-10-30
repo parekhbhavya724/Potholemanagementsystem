@@ -864,7 +864,10 @@
 
                     <div class="divider">or</div>
 
-                    <button type="button" class="form-btn" onclick="handleGoogleLogin()" style="background: #4285f4; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.6rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#3367d6'" onmouseout="this.style.background='#4285f4'">
+                    <!-- Official Google Sign-In Button Container -->
+                    <div id="googleOfficialBtnLogin" style="display: flex; justify-content: center; margin-bottom: 0.5rem; width: 100%;"></div>
+
+                    <button type="button" id="googleCustomBtnLogin" class="form-btn" onclick="handleGoogleLogin()" style="background: #4285f4; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.6rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#3367d6'" onmouseout="this.style.background='#4285f4'">
                         <i class="fab fa-google"></i> Continue with Google
                     </button>
 
@@ -921,7 +924,10 @@
 
                     <div class="divider">or</div>
 
-                    <button type="button" class="form-btn" onclick="handleGoogleLogin()" style="background: #4285f4; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.6rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#3367d6'" onmouseout="this.style.background='#4285f4'">
+                    <!-- Official Google Sign-In Button Container -->
+                    <div id="googleOfficialBtnSignup" style="display: flex; justify-content: center; margin-bottom: 0.5rem; width: 100%;"></div>
+
+                    <button type="button" id="googleCustomBtnSignup" class="form-btn" onclick="handleGoogleLogin()" style="background: #4285f4; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.6rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#3367d6'" onmouseout="this.style.background='#4285f4'">
                         <i class="fab fa-google"></i> Sign Up with Google
                     </button>
 
@@ -1636,19 +1642,74 @@
             showAppAfterLogin();
         }
 
+        function renderOfficialGoogleButtons() {
+            if (!window.google || !window.google.accounts || !window.google.accounts.id) return;
+            const loginContainer = document.getElementById('googleOfficialBtnLogin');
+            if (loginContainer) {
+                loginContainer.innerHTML = '';
+                google.accounts.id.renderButton(loginContainer, {
+                    type: 'standard',
+                    theme: 'outline',
+                    size: 'large',
+                    width: 320,
+                    text: 'continue_with',
+                    shape: 'rectangular',
+                    logo_alignment: 'left'
+                });
+                const customLoginBtn = document.getElementById('googleCustomBtnLogin');
+                if (customLoginBtn) customLoginBtn.style.display = 'none';
+            }
+
+            const signupContainer = document.getElementById('googleOfficialBtnSignup');
+            if (signupContainer) {
+                signupContainer.innerHTML = '';
+                google.accounts.id.renderButton(signupContainer, {
+                    type: 'standard',
+                    theme: 'outline',
+                    size: 'large',
+                    width: 320,
+                    text: 'signup_with',
+                    shape: 'rectangular',
+                    logo_alignment: 'left'
+                });
+                const customSignupBtn = document.getElementById('googleCustomBtnSignup');
+                if (customSignupBtn) customSignupBtn.style.display = 'none';
+            }
+        }
+
         function initGoogleIdentityServices() {
             const clientId = getGoogleClientId();
-            if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
-                try {
-                    google.accounts.id.initialize({
-                        client_id: clientId,
-                        callback: handleGoogleCredentialResponse,
-                        auto_select: false
-                    });
-                } catch (e) {
-                    console.warn('Google Identity Services initialization warning:', e);
-                }
+            if (!clientId) {
+                // Check serverless config endpoint in background (hides keys from Git)
+                fetch('/api/config')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.googleClientId) {
+                            safeStorage.setItem('googleClientId', data.googleClientId);
+                            initGoogleIdentityServices();
+                        }
+                    })
+                    .catch(() => {});
+                return;
             }
+
+            const checkGsiReady = (retries = 20) => {
+                if (window.google && window.google.accounts && window.google.accounts.id) {
+                    try {
+                        google.accounts.id.initialize({
+                            client_id: clientId,
+                            callback: handleGoogleCredentialResponse,
+                            auto_select: false
+                        });
+                        renderOfficialGoogleButtons();
+                    } catch (e) {
+                        console.warn('Google Identity Services initialization warning:', e);
+                    }
+                } else if (retries > 0) {
+                    setTimeout(() => checkGsiReady(retries - 1), 250);
+                }
+            };
+            checkGsiReady();
         }
 
         function handleGoogleLogin() {

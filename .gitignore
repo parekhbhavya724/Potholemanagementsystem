@@ -2,7 +2,7 @@
 .env
 .env.local
 .env.*.local
-config.js
+/config.js
 
 # OS & Editor files
 .DS_Store
