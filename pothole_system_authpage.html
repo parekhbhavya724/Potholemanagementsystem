@@ -1050,11 +1050,7 @@
                             <i class="fas fa-map-pin" style="color: #d85a30;"></i>
                             <span id="mapInstruction">Click on the map or drag pin to mark the pothole</span>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span id="mapProviderBadge" style="font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #eaf3de; color: #3b6d11; border: 1px solid #c5e1a5; display: inline-flex; align-items: center; gap: 0.35rem;">
-                                <i class="fas fa-circle-check"></i> OpenStreetMap (100% Free - No Card Needed)
-                            </span>
-                        </div>
+                        <span id="mapProviderBadge" style="display: none;"></span>
                     </div>
                     <div id="potholeMap"></div>
                 </div>
@@ -2538,21 +2534,12 @@
         function updateMapProviderBadge(provider, text) {
             const badge = document.getElementById('mapProviderBadge');
             const btnLabel = document.getElementById('mapKeyBtnLabel');
+            if (badge) {
+                badge.style.display = 'none'; // Keep hidden from citizen UI
+            }
             if (provider === 'google') {
-                if (badge) {
-                    badge.textContent = 'Google Maps Active';
-                    badge.style.background = '#e8f0fe';
-                    badge.style.color = '#1a73e8';
-                    badge.style.borderColor = '#aecbfa';
-                }
                 if (btnLabel) btnLabel.textContent = 'Google Maps Config';
             } else {
-                if (badge) {
-                    badge.innerHTML = '<i class="fas fa-circle-check"></i> OpenStreetMap (100% Free - No Card Needed)';
-                    badge.style.background = '#eaf3de';
-                    badge.style.color = '#3b6d11';
-                    badge.style.borderColor = '#c5e1a5';
-                }
                 if (btnLabel) btnLabel.textContent = 'Map Settings';
             }
         }
